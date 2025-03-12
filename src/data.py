@@ -51,7 +51,7 @@ class Data:
     Get inferred case of values in each string column in the data
     """
     def get_case_mapping(self,
-        n = 1000,
+        n = 50,
         minor_words = ["and", "or", "the", "a", "an", "in", "on", "at", "to", "of", "for", "by", "with", "from", "upon"]
     ):
         self.minor_words = minor_words;
@@ -229,37 +229,56 @@ class Data:
         return frame;
 
     """
-    Produce aggregates of data by all values of a single column label and a list of rows
-    @param data: str, label of data values to use
-    @param rows: list of str, labels of rows values to use
-    @param col: str, label of column values to use
-    @param filter: str, filter to apply to the data
+    Produces multiple aggregated frames, each showing a different selected row value 
     """
-    def get_table_multi_rows(self, 
-        data = None, 
-        rows = None, 
-        col = None, 
-        filter = None
+    def get_batch_agg_frames(self,
+        title_col = None,
+        titles = None,
+        datas = None,
+        col = "time_period"
     ):
-        # Get data, all specified rows and col data as columns from original data
-        data = self.data.select(data, rows, col);
-
-        # Apply filter
-        if filter:
-            data = data.filter(filter);
+        frames = {
+            title: self.get_multi_col_agg_frame(
+                title_col = title_col,
+                title = title,
+                rows = datas, 
+                col = col
+            )
+            for index, title in enumerate(titles)
+        };
+    
+    """
+    Get a frame containing multiple rows of different data
+    """
+    def get_multi_col_agg_frame(self,
+        title_col = None,
+        title = None,
+        rows = None,
+        col = None,
+    ):
+        # Get frame, row and col frame as columns from original frame 
+        requested_cols = rows + [col];
+        frame = self.data.select(requested_cols);
         
-        breakpoint();
-        # Transpose data
-        data = data.groupBy(rows).pivot(col).sum(data);
+        # Remove rows with missing frame
+        frame = frame.dropna();
+        
+        # Remove rows not belonging to title
+        title_col_case = self.case_mapping[title_col];
+        title = self.convert_case(title, title_col_case);
 
-        return data;
+        frame = frame.filter(col(title_col) == title);
+
+        # Transpose frame
+        frame = frame.groupBy(rows).pivot(col).sum(rows);
+
+        return frame;
 
     """
     Get all column names which are reasons for absence
     """
     def get_absence_reasons(self):
         return [col for col in self.data.columns if is_reason_for_absence(col)];         
-
     """
     Helper method to check if column is a reason for absence
     """

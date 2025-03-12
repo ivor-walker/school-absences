@@ -27,7 +27,6 @@ def get_by_la():
     return data;
 
 view.display_data(get_by_la());
-breakpoint();
 
 # Part 1d
 """
@@ -53,6 +52,7 @@ def get_by_school_type():
 view.display_data(get_by_school_type());
 
 # Part 1d extension
+
 """
 Get authorised absence data by absence reasons for requested school types
 """
@@ -67,16 +67,16 @@ def get_by_absence_reasons():
     absence_reasons = absences.get_absence_reasons();
     
     # Get authorised absence data for the absence reasons
-    data = absences.get_data_multi_rows(
-        data = "authorised_absences", 
-        row = absence_reasons, 
-        col = "time_period",
-        filter = f'school_type = {school_types}'
+    data = data.get_batch_agg_frames(
+        title_col = "school_type",
+        titles = school_types,
+        datas = absence_reasons,
     );
 
     return data;
 
-view.display_data(get_by_absence_reasons());
+data = get_by_absence_reasons();
+[view.display_multiple_data(frame) for title, frame in data.items()]; 
 
 # Part 2a
 """
