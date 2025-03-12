@@ -8,18 +8,19 @@ class View:
     @param prompt: str, the prompt to display to the user
     @param type: str, the type of input to get from the user
     """
-    def prompt_user(
-        prompt = prompt, 
+    def prompt_user(self,
+        prompt = None, 
         type = "str",
         split_char = ","
     ):
         if type == "list": 
-            prompt = f"{prompt} (separated by {split_char})"
-            return input(prompt).split(split_char);
+            # Ask user to input entire list seperated by split char
+            list_prompt = f"{prompt} (separated by {split_char})"
+            return input(list_prompt).split(split_char);
 
     """
     Display the data to the user
-    @param data: any, the data to display
+    @param data: dataframe to display
     """
-    def display_data(data):
-        print(data);
+    def display_data(self, data):
+        data.show();

@@ -17,12 +17,11 @@ def get_by_la():
         type = "list"
     );
     
-    # Get enrolment data for the local authorities
-    data = data.get_table(
+    # Get enrolment data for the requested local authorities
+    data = absences.get_agg_frame(
         data = "enrolments", 
         row = "la_name", 
-        col = "year_breakdown",
-        filter = f'la_name = {local_authorities}'
+        selected_rows = local_authorities,
     );
 
     return data;
@@ -40,13 +39,13 @@ def get_by_school_type():
         prompt = "Enter the school types you want to analyse", 
         type = "list"
     );
-    
+
     # Get authorised absence data for the school types
-    data = data.get_table(
+    data = absences.get_agg_frame(
         data = "authorised_absences", 
         row = "school_type", 
+        selected_rows = school_types,
         col = "year_breakdown",
-        filter = f'school_type = {school_types}'
     );
 
     return data;
@@ -65,13 +64,13 @@ def get_by_absence_reasons():
     );
 
     # Get every absence reason 
-    absence_reasons = data.get_absence_reasons();
+    absence_reasons = absences.get_absence_reasons();
     
     # Get authorised absence data for the absence reasons
-    data = data.get_data(
+    data = absences.get_data_multi_rows(
         data = "authorised_absences", 
-        row = *absence_reasons, 
-        col = "year_breakdown",
+        row = absence_reasons, 
+        col = "time_period",
         filter = f'school_type = {school_types}'
     );
 
@@ -100,7 +99,7 @@ def get_by_la_year():
     columns = ["school_type", "authorised_absences", "unauthorised_absences"];
     
     # Get data specified in 'columns' for the local authorities
-    data = data.get_data(columns, local_authorities, columns,
+    data = absences.get_data(columns, local_authorities, columns,
         filter = f'la_name = {local_authorities} AND year = {year}',
     );
 
@@ -114,7 +113,7 @@ view.display_data(data);
 # Part 2b
 
 # Get data on regions and attendance
-data = data.get_data(
+data = absences.get_data(
     data = "attendance", 
     row = "region", 
     col = "year_breakdown"
@@ -125,7 +124,7 @@ data = data.get_data(
 # Part 3
 
 # Get data on school type and location
-data = data.get_data(
+data = absences.get_data(
     data = "sess_overall", 
     row = "school_type", 
     col = "region_name"
