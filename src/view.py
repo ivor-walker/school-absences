@@ -15,9 +15,15 @@ class View:
     ):
         if type == "list": 
             # Ask user to input entire list seperated by split char
-            list_prompt = f"{prompt} (separated by {split_char})"
-            return input(list_prompt).split(split_char);
+            list_prompt = f"{prompt} (separated by {split_char})";
+            user_input = input(list_prompt);
 
+            # Remove whitespace in list
+            user_input = user_input.split(split_char);
+            user_input = [item.strip() for item in user_input];
+            split_char.join(user_input);
+
+            return user_input;
     """
     Display the data to the user
     @param data: dataframe to display

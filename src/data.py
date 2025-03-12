@@ -51,26 +51,35 @@ class Data:
     Get inferred case of values in each string column in the data
     """
     def get_case_mapping(self,
-        n = 100,
-        minor_words = ["and", "or", "the", "a", "an", "in", "on", "at", "to", "of", "for", "by", "with", "from"]
+        n = 1000,
+        minor_words = ["and", "or", "the", "a", "an", "in", "on", "at", "to", "of", "for", "by", "with", "from", "upon"]
     ):
         self.minor_words = minor_words;
         self.case_mapping = {};
         
+        # Get all columns with a string data type
         string_cols = [col for col in self.data.columns if str(self.data.schema[col].dataType) == "StringType()"];
-        for col in string_cols:
+        
+        for string_col in string_cols:
             # Get subset of data with non-null values
-            subset = self.data.filter(col(col).isNotNull()).select(col).limit(n).collect();
+            subset = self.data.filter(col(string_col).isNotNull()).select(string_col).limit(n).collect();
 
-            # Get inferred cases of values in column
-            inferred_cases = [self.infer_case(row[col]) for row in subset];
+            # Get inferred cases of values in string_column
+            try:
+                inferred_cases = [self.infer_case(row[string_col]) for row in subset];
+            except ValueError as e:
+                print(e);
+            
+            # Set to proper case if any value is proper case
+            if "proper" in inferred_cases:
+                case = "proper"; 
 
-            # Get least common case
-            case = min(set(inferred_cases), key = inferred_cases.count);
+            # Else, set to most common case
+            else:
+                case = max(set(inferred_cases), key = inferred_cases.count);
 
-            self.case_mapping[col] = case;
+            self.case_mapping[string_col] = case;
 
-        breakpoint();
 
     """
     Infer case of a string
@@ -80,23 +89,33 @@ class Data:
     def infer_case(self,
         string = None,
     ):
+        # Trim string
+        string = string.strip();
+
+        # Not composed of words 
+        if string.count("/") == 2:
+            return "date";
+        if string.isnumeric():
+            return "numeric";
+        if not any([char.isalpha() for char in string]):
+            return "symbol";
 
         # Entirely lower or upper case
         if string.islower():
             return "lower";
-        elif string.isupper():
+        if string.isupper():
             return "upper";
         
-        # Title case
-        elif string.istitle():
-            return "title";
-
-        # Sentence case
-        elif string[0].isupper():
-            return "sentence";
+        # Title case, treat as proper case
+        if string[0].isupper():
+            return "proper";
 
         words = string.split(" ");
         
+        # Sentence case: more than one word, first word is title case, and all other words are lower case
+        if len(words) > 1 and all([word.islower() for word in words[1:]]) and words[0][0].isupper():
+            return "sentence";
+
         # Seperate words into major and minor
         minor_words = self.minor_words;
         found_major_words = [word for word in words if word.lower() not in minor_words];
@@ -105,7 +124,7 @@ class Data:
         # If all major words are title case and all minor words are lower case, then proper case
         if all([word.istitle() for word in found_major_words]) and all([word.islower() for word in found_minor_words]):
             return "proper";
-
+        
         # If case cannot be inferred, throw error
         raise ValueError(f"Case of '{string}' could not be inferred!");
     
@@ -133,8 +152,9 @@ class Data:
             words = string.split(" ");
             words = [word.title() if word.lower() not in self.minor_words else word.lower() for word in words];
             return " ".join(words);
+
         else:
-            raise ValueError(f"Case '{case}' not recognised!");
+            return string;
 
     """
     Produce dataframe of aggregates of data, by all values of a single column and row label
@@ -184,7 +204,7 @@ class Data:
         case = self.case_mapping[row];
         
         # Convert row to match case of row in frame
-        selected_rows = [self.convert_case(row, case) for selected_row in selected_rows]; 
+        selected_rows = [self.convert_case(selected_row, case) for selected_row in selected_rows]; 
 
         # Get missing selected rows
         missing_selected_rows = [
@@ -200,6 +220,12 @@ class Data:
             missing_selected_rows = "', '".join(missing_selected_rows);
             raise ValueError(f"Rows '{missing_selected_rows}' not found in {row}!");
         
+        # Filter frame to only include selected rows
+        frame = frame.filter(
+            col(row)
+            .isin(selected_rows)
+        );
+
         return frame;
 
     """
