@@ -51,7 +51,11 @@ def get_by_school_type():
 """
 Get authorised absence data by absence reasons for requested school types
 """
-def get_by_absence_reasons():
+def get_by_absence_reasons(
+    authorised_prefix = "sess_auth_",
+    title_col = "school_type",
+    datas_category = "absence_reasons"
+):
     # Ask user for school types
     school_types = view.prompt_user(
         prompt = "Enter the school types you want to analyse", 
@@ -63,10 +67,15 @@ def get_by_absence_reasons():
     
     # Get authorised absence data for the absence reasons
     data = absences.get_batch_agg_frames(
-        title_col = "school_type",
+        title_col = title_col,
         titles = school_types,
+        datas_category = datas_category,
         datas = absence_reasons,
+        col_prefix = authorised_prefix
     );
+
+    
+    breakpoint();
 
     return data;
 

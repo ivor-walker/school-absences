@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, regexp_replace
 
 """
 Class that produces data: loads the absences data and provides methods to extract information from it
@@ -18,8 +18,6 @@ class Data:
         self.__load_data(csv_loc = absences_loc);
         
         self.__get_case_mapping();
-
-        self.__get_absence_reasons();
 
     """
     Create a SparkSession
@@ -83,14 +81,16 @@ class Data:
             # Else, set to most common case
             else:
                 case = max(set(inferred_cases), key = inferred_cases.count);
+            
+            # Convert non-word values to corresponding data types 
+            if case in ["date", "numeric", "symbol"]:
+                self.__convert_str_col(string_col = string_col, case = case);
 
             self.__case_mapping[string_col] = case;
-
 
     """
     Infer case of a string
     @param string: str, the string to infer the case of
-    @param minor_words: list of str, words that should be lowercase during proper case
     """
     def __infer_case(self,
         string = None,
@@ -182,6 +182,31 @@ class Data:
 
         else:
             return string;
+    
+    """
+    Convert all non-word string columns to non-string columns
+    """
+    def __convert_str_col(self,
+        string_col = None,
+        case = None
+    ):
+        # Date: cast to SQL date
+        if case == "date":
+            self.__data = self.__data.withColumn(string_col, col(string_col).cast("date"));
+        
+        # Numeric: cast to int
+        elif case == "numeric":
+            self.__data = self.__data.withColumn(string_col, col(string_col).cast("int"));
+        
+        # Symbol: convert all symbols to 0, then cast to int
+        elif case == "symbol":
+            self.__data = self.__data.withColumn(
+                string_col, 
+                regexp_replace(
+                    col(string_col),
+                    "[^0-9]", "0"
+                ).cast("int")
+            );
 
     """
     Produce dataframe of aggregates of data, by all values of a single column and row label
@@ -208,7 +233,12 @@ class Data:
             );
 
         # Transpose frame
-        frame = frame.groupBy(row).pivot(col).sum(data);
+        frame = self.__get_grouped_frame(
+            frame = frame,
+            group_by = [row],
+            pivot = col,
+            sum = data
+        );
 
         return frame;
     
@@ -221,7 +251,7 @@ class Data:
     ):
         frame = self.__data.select(requested_cols);
         
-        # Remove rows with missing frame
+        # Remove rows with missing data
         frame = frame.dropna();
 
         return frame;
@@ -264,6 +294,17 @@ class Data:
         );
 
         return frame;
+    
+    """
+    Group by, pivot and sum over a frame
+    """
+    def __get_grouped_frame(self,
+        frame = None,
+        group_by = None,
+        pivot = None,
+        sum = None
+    ):
+        return frame.groupBy(group_by).pivot(pivot).sum(sum);
 
     """
     Produces multiple aggregated frames, each showing a different selected row value 
@@ -271,57 +312,94 @@ class Data:
     def get_batch_agg_frames(self,
         title_col = None,
         titles = None,
+        datas_category = None,
         datas = None,
-        col = "time_period"
+        col = "time_period",
+        col_prefix = None
     ):
-        frames = {
-            title: self.get_multi_col_agg_frame(
-                title_col = title_col,
-                title = title,
-                rows = datas, 
-                col = col
-            )
-            for index, title in enumerate(titles)
-        };
+        frames = {};
 
-        return frames;
-    
-    """
-    Get a frame containing multiple rows of different data
-    """
-    def get_multi_col_agg_frame(self,
-        title_col = None,
-        title = None,
-        rows = None,
-        col = None,
-    ):
-        # Get initial frame of all data        
-        requested_cols = [title_col, col] + rows;
-        frame = self.get_frame(requested_cols = requested_cols);
-
-        # Remove rows not belonging to title
-        frame = self.__get_selected_rows(
-                frame = frame,
+        # Get initial frame containing all data
+        initial_frame = self.get_frame(requested_cols = [title_col, col] + datas);
+        
+        for title in titles:
+            # Get frame with only title
+            frame = self.__get_selected_rows(
+                frame = initial_frame,
                 row = title_col,
                 selected_rows = [title]
             );
 
-        breakpoint();
+            # Remove title column
+            frame = frame.drop(title_col);
 
-        # Transpose frame
-        frame = frame.groupBy(rows).pivot(col).sum(rows);
+            # Transpose frame
+            frame = self.get_multi_col_agg_frame(
+                frame = frame,
+                datas_category = datas_category,
+                datas = datas,
+                col = col
+            );
+            
+            # Remove authorised prefix from values of data category column
+            frame = frame.withColumn(
+                datas_category, 
+                regexp_replace(datas_category, col_prefix, "")
+            ); 
+
+            # Assign frame to frames dictionary
+            frames[title] = frame;
+
+        return frames;
+    
+    """
+    Turn an initial frame into a frame of multiple aggregates  
+    """
+    def get_multi_col_agg_frame(self,
+        frame = None,
+        datas_category = None,
+        datas = None,
+        col = None
+    ):
+        # Create a stack expression
+        n_datas = len(datas);
+        stack_expr = f"""
+            stack(
+                {n_datas},
+                {", ".join([f"'{data}', {data}" for data in datas])}
+            ) as ({datas_category}, count)
+        """;
+
+        # Unpivot frame by stacking data columns
+        frame = frame.selectExpr(col, stack_expr);
+
+        # Group by and pivot frame
+        frame = self.__get_grouped_frame(
+            frame = frame,
+            group_by = [datas_category],
+            pivot = col,
+            sum = "count"
+        );
         
-        breakpoint();
+        # Sort data by last column if int
+        last_col = frame.columns[-1];
 
+        if str(frame.schema[last_col].dataType) == "IntegerType":
+            frame = frame.orderBy(frame[last_col].asc());
+        
+        
         return frame;
 
     """
     Get all column names which are reasons for absence
+    @return list of str, the names of the columns which are reasons for absence
     """
-    def __get_absence_reasons(self):
-        self.absence_reasons = [col for col in self.__data.columns if self.__is_reason_for_absence(col)];         
+    def get_absence_reasons(self):
+        return [col for col in self.__data.columns if self.__is_reason_for_absence(col)];
+
     """
     Helper method to check if column is a reason for absence
+    @param col: str, the column to check
     """
     def __is_reason_for_absence(self, col):
-        return "auth" in col and "unauth" not in col;
+        return col.startswith("sess_auth_");
