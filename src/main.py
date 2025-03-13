@@ -38,21 +38,18 @@ def get_by_school_type():
         prompt = "Enter the school types you want to analyse", 
         type = "list"
     );
-
+    
     # Get authorised absence data for the school types
     data = absences.get_agg_frame(
-        data = "authorised_absences", 
+        data = "sess_authorised", 
         row = "school_type", 
         selected_rows = school_types,
-        col = "year_breakdown",
     );
 
     return data;
 
-view.display_data(get_by_school_type());
 
 # Part 1d extension
-
 """
 Get authorised absence data by absence reasons for requested school types
 """
@@ -75,8 +72,8 @@ def get_by_absence_reasons():
 
     return data;
 
-data = get_by_absence_reasons();
-[view.display_multiple_data(frame) for title, frame in data.items()]; 
+datas = get_by_absence_reasons();
+view.display_multiple_data(datas);
 
 # Part 2a
 """

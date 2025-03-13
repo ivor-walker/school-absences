@@ -72,7 +72,11 @@ class Data:
             
             # Set to proper case if any value is proper case
             if "proper" in inferred_cases:
-                case = "proper"; 
+                case = "proper";
+
+            # Set to sentence case if any value is sentence case
+            elif "sentence" in inferred_cases:
+                case = "sentence";
 
             # Else, set to most common case
             else:
@@ -106,28 +110,47 @@ class Data:
         if string.isupper():
             return "upper";
         
-        # Title case, treat as proper case
-        if string[0].isupper():
-            return "proper";
-
         words = string.split(" ");
         
-        # Sentence case: more than one word, first word is title case, and all other words are lower case
-        if len(words) > 1 and all([word.islower() for word in words[1:]]) and words[0][0].isupper():
-            return "sentence";
+        # Cases with one word
+        if len(words) == 1:
+            
+            # Title case        
+            if self.is_title(string):
+                return "title";
+        
+        # Cases with multiple words
+        else:
+            # Sentence case: more than one word, first word is title case, and all other words are lower case
+            if self.is_title(words[0]) and all([word.islower() for word in words[1:]]):
+                return "sentence";
+        
+            # Seperate words into major and minor
+            minor_words = self.minor_words;
+            found_major_words = [word for word in words if word.lower() not in minor_words];
+            found_minor_words = [word for word in words if word.lower() in minor_words];
 
-        # Seperate words into major and minor
-        minor_words = self.minor_words;
-        found_major_words = [word for word in words if word.lower() not in minor_words];
-        found_minor_words = [word for word in words if word.lower() in minor_words];
-
-        # If all major words are title case and all minor words are lower case, then proper case
-        if all([word.istitle() for word in found_major_words]) and all([word.islower() for word in found_minor_words]):
-            return "proper";
+            # If all major words are title case and all minor words are lower case, then proper case
+            if all([self.is_title(word) for word in found_major_words]) and all([word.islower() for word in found_minor_words]):
+                return "proper";
         
         # If case cannot be inferred, throw error
         raise ValueError(f"Case of '{string}' could not be inferred!");
     
+    """
+    Helper method to check if string is title
+    @param string: str, the string to check
+    """
+    def is_title(self, string):
+        return string[0].isupper();
+
+    """
+    Helper method to convert string to title
+    @param string: str, the string to convert
+    """
+    def to_title(self, string):
+        return string[0].upper() + string[1:];
+
     """
     Convert a string to a specified case
     @param string: str, the string to convert
@@ -143,10 +166,12 @@ class Data:
             return string.upper();
 
         elif case == "title":
-            return string.title();
+            return self.to_title(string);
 
         elif case == "sentence":
-            return string[0].upper() + string[1:].lower();
+            words = string.split(" ");
+            words = [self.to_title(word) if index == 0 else word.lower() for index, word in enumerate(words)];
+            return " ".join(words);
 
         elif case == "proper":
             words = string.split(" ");
@@ -237,6 +262,8 @@ class Data:
         datas = None,
         col = "time_period"
     ):
+        breakpoint();
+
         frames = {
             title: self.get_multi_col_agg_frame(
                 title_col = title_col,
@@ -246,6 +273,8 @@ class Data:
             )
             for index, title in enumerate(titles)
         };
+
+        return frames;
     
     """
     Get a frame containing multiple rows of different data
@@ -256,6 +285,8 @@ class Data:
         rows = None,
         col = None,
     ):
+        breakpoint();
+
         # Get frame, row and col frame as columns from original frame 
         requested_cols = rows + [col];
         frame = self.data.select(requested_cols);
@@ -268,9 +299,11 @@ class Data:
         title = self.convert_case(title, title_col_case);
 
         frame = frame.filter(col(title_col) == title);
-
+        
         # Transpose frame
         frame = frame.groupBy(rows).pivot(col).sum(rows);
+        
+        breakpoint();
 
         return frame;
 
