@@ -88,10 +88,11 @@ Get unauthorised absences in a certain year, by region name and local authority 
 """
 def get_unauthorised_absences():
     # Create dictionary of both region and local authority data
-    frames = get_batch_agg_frames(
+    frames = absences.get_batch_agg_frames(
         datas = ["sess_unauth_totalreasons", "sess_unauth_totalreasons"],
-        row = ["region_name", "la_name"],
+        rows = ["region_name", "la_name"],
         titles = ["Region", "Local Authority"]
+    );
 
     return frames;
 
@@ -120,8 +121,6 @@ def get_by_la_year():
     # Specify the columns to be analysed
     columns = ["school_type", "authorised_absences", "unauthorised_absences"];
     
-    # Get data specified in 'columns' for the local authorities
-    );
 
 data = get_by_la_year();
 
