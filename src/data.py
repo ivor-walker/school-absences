@@ -243,6 +243,40 @@ class Data:
         return frame;
     
     """
+    Get multiple aggregated frames containing one type of data
+    @param datas: list of str, the datas to aggregate
+    @param rows: list of str, rows of frames 
+    @param cols: list of str, cols of frames
+    @param titles: list of str, titles of frames
+    @param default_col: str, default column
+    """
+
+    def get_batch_agg_frames(self,
+        datas = None,
+        rows = None,
+        cols = None,
+        titles = None,
+        default_col = "time_period"
+    ):
+        if cols is None:
+            cols = [default_col] * len(datas);
+
+        frames = {};
+
+        for index, data in enumerate(datas):
+            # Get frame for data
+            frame = self.get_agg_frame(
+                data = data,
+                row = rows[index],
+                col = cols[index]
+            );
+
+            # Assign frame to frames dictionary
+            frames[titles[index]] = frame;
+
+        return frames;
+
+    """
     Get a frame with given columns
     @param requested_cols: list of str, the columns to include in the frame
     """
@@ -307,9 +341,15 @@ class Data:
         return frame.groupBy(group_by).pivot(pivot).sum(sum);
 
     """
-    Produces multiple aggregated frames, each showing a different selected row value 
+    Produces multiple aggregated frames containing multiple types of data
+    @param title_col: str, the column to use as the title
+    @param titles: list of str, the titles to use
+    @param datas_category: str, overall category of all datas to aggregate
+    @param datas: list of str, the datas to aggregate
+    @param col: str, the column to use as the column of each frame
+    @param col_prefix: str, the prefix to remove from values of the column
     """
-    def get_batch_agg_frames(self,
+    def get_batch_multi_agg_frames(self,
         title_col = None,
         titles = None,
         datas_category = None,
@@ -323,7 +363,7 @@ class Data:
         initial_frame = self.get_frame(requested_cols = [title_col, col] + datas);
         
         for title in titles:
-            # Get frame with only title
+            # Get frame with only data for title
             frame = self.__get_selected_rows(
                 frame = initial_frame,
                 row = title_col,
@@ -351,6 +391,7 @@ class Data:
             frames[title] = frame;
 
         return frames;
+    
     
     """
     Turn an initial frame into a frame of multiple aggregates  

@@ -25,18 +25,18 @@ class View:
 
             return user_input;
     """
-    Display a dataframe to the user
-    @param data: dataframe to display
+    Display a dataframes to the user
+    @param frame: frameframe to display
     """
-    def display_data(self, data):
-        data.show();
+    def display_frame(self, frame):
+        frame.show();
 
     """
     Display multiple dataframes to the user
-    @param data: dictionary of titles and dataframes to display
+    @param frame: dictionary of titles and frameframes to display
     """
-    def display_multiple_data(self, datas):
-        for title, data in datas.items():
+    def display_multiple_frames(self, frames):
+        for title, frame in frames.items():
             print(title);
-            self.display_data(data); 
+            self.display_frame(frame); 
             print("\n");
