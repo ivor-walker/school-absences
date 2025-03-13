@@ -38,5 +38,5 @@ class View:
     def display_multiple_data(self, datas):
         for title, data in datas.items():
             print(title);
-            display_data(data); 
+            self.display_data(data); 
             print("\n");

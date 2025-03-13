@@ -381,12 +381,9 @@ class Data:
             sum = "count"
         );
         
-        # Sort data by last column if int
+        # Sort data by last column
         last_col = frame.columns[-1];
-
-        if str(frame.schema[last_col].dataType) == "IntegerType":
-            frame = frame.orderBy(frame[last_col].asc());
-        
+        frame = frame.orderBy(frame[last_col].asc());
         
         return frame;
 

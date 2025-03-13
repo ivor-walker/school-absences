@@ -65,8 +65,8 @@ def get_by_absence_reasons(
     # Get every absence reason 
     absence_reasons = absences.get_absence_reasons();
     
-    # Get authorised absence data for the absence reasons
-    data = absences.get_batch_agg_frames(
+    # Get one frame per school type detailing authorised absences over time by absence reason
+    datas = absences.get_batch_agg_frames(
         title_col = title_col,
         titles = school_types,
         datas_category = datas_category,
@@ -74,10 +74,7 @@ def get_by_absence_reasons(
         col_prefix = authorised_prefix
     );
 
-    
-    breakpoint();
-
-    return data;
+    return datas;
 
 datas = get_by_absence_reasons();
 view.display_multiple_data(datas);
