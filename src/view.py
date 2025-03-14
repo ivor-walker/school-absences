@@ -14,16 +14,47 @@ class View:
         split_char = ","
     ):
         if type == "list": 
-            # Ask user to input entire list seperated by split char
-            list_prompt = f"{prompt} (separated by {split_char})";
-            user_input = input(list_prompt);
+            return self.__prompt_for_list(prompt, split_char);
 
-            # Remove whitespace in list
-            user_input = user_input.split(split_char);
-            user_input = [item.strip() for item in user_input];
-            split_char.join(user_input);
+        elif type == "int":
+            return self.__prompt_for_int(prompt);
 
-            return user_input;
+    """
+    Ask for and recieve list input from the user
+    """
+    def __prompt_for_list(self, prompt, split_char):
+        # Ask user to input entire list seperated by split char
+        list_prompt = f"{prompt} (separated by {split_char}): ";
+        user_input = input(list_prompt);
+        
+        # Check user input contains split char
+        if split_char not in user_input:
+            print(f"Invalid list.");
+            return self.__prompt_for_list(prompt, split_char);
+
+        # Remove whitespace in list
+        user_input = user_input.split(split_char);
+        user_input = [item.strip() for item in user_input];
+        split_char.join(user_input);
+
+        return user_input;
+    
+    """
+    Ask for and recieve a int from the user
+    """
+    def __prompt_for_int(self, prompt):
+        # Ask user to input int
+        int_prompt = f"{prompt}: ";
+        user_input = input(int_prompt);
+
+        # Check user input is a int
+        try:
+            integer = int(user_input);
+        except:
+            print("Invalid year.");
+            return self.__prompt_for_int(prompt);
+
+        return integer;
     """
     Display a dataframes to the user
     @param frame: frameframe to display

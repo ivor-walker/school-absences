@@ -82,8 +82,8 @@ class Data:
             # Convert non-word values to corresponding data types 
             if case in ["date", "numeric", "symbol"]:
                 self.__convert_str_col(string_col = string_col, case = case);
-
-            self.__case_mapping[string_col] = case;
+            else:
+                self.__case_mapping[string_col] = case;
 
     """
     Infer case of a string
@@ -291,7 +291,7 @@ class Data:
             requested_cols = frame.columns;
 
         # Create filter query
-        filter_query = self.__get_selected_rows(
+        filter_query = self.__create_filter_query(
             frame = frame,
             rows = rows,
             selected_rows = selected_rows,
@@ -313,7 +313,7 @@ class Data:
     @param selected_rows: list of str, the values in rows to select
     @param or_and: str, the operator to use when filtering by selected rows
     """
-    def __get_selected_rows(self,
+    def __create_filter_query(self,
         frame = None,
         rows = None,
         selected_rows = None,
@@ -321,28 +321,38 @@ class Data:
     ):
         # Convert selected rows to correct case and ensure they exist in frame
         for index, row in enumerate(rows):
+            # Convert any integer arguments to string
+            selected_rows[index] = [str(selected_row) for selected_row in selected_rows[index]];
+
+            # Get selected rows to conform to case of row in frame if required
+            if row in self.__case_mapping:
+                case = self.__case_mapping[row];
+                selected_rows[index] = [self.__convert_case(selected_row, case) for selected_row in selected_rows[index]]; 
+            
+
             rows_to_select = selected_rows[index];
-
-            # Get selected rows to conform to case of row in frame
-            case = self.__case_mapping[row];
-            selected_rows[index] = [self.__convert_case(selected_row, case) for selected_row in selected_rows]; 
-
+            
             # Get missing selected rows
             missing_selected_rows = [
-                selected_row for selected_row in selected_rows 
+                selected_row for selected_row in rows_to_select 
                 if frame.filter(col(row) == selected_row)
                 # Since we are only checking for existence, we can limit to 1 row
                 .limit(1)
                 .count() == 0
             ];
 
-            # Raise error if missing selected rows
+            # Raise error if any selected rows are missing 
             if len(missing_selected_rows) > 0:
                 missing_selected_rows = "', '".join(missing_selected_rows);
                 raise ValueError(f"Rows '{missing_selected_rows}' not found in {row}!");
         
-        # Filter frame to only include selected rows
-        queries = [f"{row} == '{selected_row}'" for selected_row in selected_rows]; 
+        # Create SQL filter queries for each selected row
+        selected_rows = ["', '".join(selected_row) for selected_row in selected_rows];
+        queries = [
+            f"{row} in ('{selected_rows[index]}')" for index, row in enumerate(rows)
+        ];
+    
+        # Join all queries together
         query = f" {or_and} ".join(queries);
         
         return query;
@@ -413,14 +423,25 @@ class Data:
     
     
     """
-    Turn an initial frame into a frame of multiple aggregates  
+    Get a frame with aggregates of multiple columns 
     """
     def get_multi_col_agg_frame(self,
         frame = None,
+        rows = [],
+        selected_rows = [],
         datas_category = None,
         datas = None,
         col = None
     ):
+        # Get frame from data if not provided
+        if frame is None:
+            requested_cols = [col] + datas;
+            frame = self.get_frame(
+                requested_cols = requested_cols,
+                rows = rows,
+                selected_rows = selected_rows
+            );
+
         # Create a stack expression
         n_datas = len(datas);
         stack_expr = f"""

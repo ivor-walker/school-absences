@@ -23,8 +23,8 @@ def get_by_la():
     # Get enrolment data for the requested local authorities
     frame = absences.get_agg_frame(
         data = "enrolments", 
-        row = "la_name", 
-        selected_rows = local_authorities,
+        rows = ["la_name"], 
+        selected_rows = [local_authorities],
     );
 
     return frame;
@@ -44,8 +44,8 @@ def get_by_school_type():
     # Get authorised absence data for the school types
     frame = absences.get_agg_frame(
         data = "sess_authorised", 
-        row = "school_type", 
-        selected_rows = school_types,
+        rows = ["school_type"], 
+        selected_rows = [school_types],
     );
 
     return frame;
@@ -69,7 +69,7 @@ def get_by_absence_reasons(
     # Ask user for year
     year = view.prompt_user(
         prompt = "Enter the year you want to analyse",
-        type = "year"
+        type = "int"
     );
 
     # Get every absence reason 
@@ -79,9 +79,9 @@ def get_by_absence_reasons(
     frames = absences.get_multi_col_agg_frame(
         datas = absence_reasons,
         datas_category = datas_category,
-        row = title_col,
-        selected_rows = school_types,
-
+        col = title_col,
+        rows = [title_col, "time_period"],
+        selected_rows = [school_types, [year]]
     );
 
     return frames;
