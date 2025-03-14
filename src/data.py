@@ -65,10 +65,7 @@ class Data:
             subset = self.__data.filter(col(string_col).isNotNull()).select(string_col).limit(n).collect();
 
             # Get inferred cases of values in string_column
-            try:
-                inferred_cases = [self.__infer_case(row[string_col]) for row in subset];
-            except ValueError as e:
-                print(e);
+            inferred_cases = [self.__infer_case(row[string_col]) for row in subset];
             
             # Set to proper case if any value is proper case
             if "proper" in inferred_cases:
@@ -217,20 +214,16 @@ class Data:
     """
     def get_agg_frame(self, 
         data = None, 
-        row = None, 
-        selected_rows = None,
-        col = "time_period", 
+        rows = [],
+        selected_rows = [],
+        col = "time_period"
     ):
         requested_cols = [data, row, col];
-        frame = self.get_frame(requested_cols = requested_cols); 
-
-        # Get requested rows only (if specified) 
-        if selected_rows:
-            frame = self.__get_selected_rows(
-                frame = frame,
-                row = row,
-                selected_rows = selected_rows
-            );
+        frame = self.get_frame(
+            requested_cols = requested_cols,
+            rows = rows,
+            selected_rows = selected_rows
+        ); 
 
         # Transpose frame
         frame = self.__get_grouped_frame(
@@ -277,13 +270,36 @@ class Data:
         return frames;
 
     """
-    Get a frame with given columns
-    @param requested_cols: list of str, the columns to include in the frame
+    Get a subframe with given columns
+    @param frame: dataframe, the dataframe to get the subset from
+    @param requested_cols: list of str, the columns to select
+    @param rows: list of str, the row labels to check
+    @param selected_rows: list of str, the selected rows to filter by
+    @param or_and: str, the operator to use when filtering by selected rows
     """
     def get_frame(self,
-        requested_cols = None
+        frame = None,
+        requested_cols = None,
+        rows = [],
+        selected_rows = [],
+        or_and = "and"
     ):
-        frame = self.__data.select(requested_cols);
+        if frame is None:
+            frame = self.__data;
+        
+        if requested_cols is None:
+            requested_cols = frame.columns;
+
+        # Create filter query
+        filter_query = self.__get_selected_rows(
+            frame = frame,
+            rows = rows,
+            selected_rows = selected_rows,
+            or_and = or_and
+        );
+        
+        # Select requested columns and filter by selected rows
+        frame = frame.select(requested_cols).filter(filter_query);
         
         # Remove rows with missing data
         frame = frame.dropna();
@@ -291,44 +307,45 @@ class Data:
         return frame;
 
     """
-    Get a frame with only certain rows in a column
+    Generate a filter query to select rows from a frame 
     @param frame: dataframe, the dataframe to get the subset from
-    @param row: str, label of row values to use
-    @param selected_rows: list of str, the rows to select
+    @param rows: list of str, the column labels to get values from
+    @param selected_rows: list of str, the values in rows to select
+    @param or_and: str, the operator to use when filtering by selected rows
     """
     def __get_selected_rows(self,
         frame = None,
-        row = None,
-        selected_rows = None
+        rows = None,
+        selected_rows = None,
+        or_and = None
     ):
-        # Get case of row
-        case = self.__case_mapping[row];
-        
-        # Convert row to match case of row in frame
-        selected_rows = [self.__convert_case(selected_row, case) for selected_row in selected_rows]; 
+        # Convert selected rows to correct case and ensure they exist in frame
+        for index, row in enumerate(rows):
+            rows_to_select = selected_rows[index];
 
-        # Get missing selected rows
-        missing_selected_rows = [
-            selected_row for selected_row in selected_rows 
-            if frame.filter(col(row) == selected_row)
-            # Since we are only checking for existence, we can limit to 1 row
-            .limit(1)
-            .count() == 0
-        ];
+            # Get selected rows to conform to case of row in frame
+            case = self.__case_mapping[row];
+            selected_rows[index] = [self.__convert_case(selected_row, case) for selected_row in selected_rows]; 
 
-        # Raise error if missing selected rows
-        if len(missing_selected_rows) > 0:
-            missing_selected_rows = "', '".join(missing_selected_rows);
-            raise ValueError(f"Rows '{missing_selected_rows}' not found in {row}!");
+            # Get missing selected rows
+            missing_selected_rows = [
+                selected_row for selected_row in selected_rows 
+                if frame.filter(col(row) == selected_row)
+                # Since we are only checking for existence, we can limit to 1 row
+                .limit(1)
+                .count() == 0
+            ];
+
+            # Raise error if missing selected rows
+            if len(missing_selected_rows) > 0:
+                missing_selected_rows = "', '".join(missing_selected_rows);
+                raise ValueError(f"Rows '{missing_selected_rows}' not found in {row}!");
         
         # Filter frame to only include selected rows
-        frame = frame.filter(
-            col(row)
-            .isin(selected_rows)
-        );
-
-        return frame;
-    
+        queries = [f"{row} == '{selected_row}'" for selected_row in selected_rows]; 
+        query = f" {or_and} ".join(queries);
+        
+        return query;
     """
     Group by, pivot and sum over a frame
     """
@@ -358,15 +375,17 @@ class Data:
         col_prefix = None
     ):
         frames = {};
-
+        
         # Get initial frame containing all data
-        initial_frame = self.get_frame(requested_cols = [title_col, col] + datas);
+        initial_frame = self.get_frame(
+            requested_cols = [title_col, col] + datas
+        );
         
         for title in titles:
             # Get frame with only data for title
-            frame = self.__get_selected_rows(
+            frame = self.get_frame(
                 frame = initial_frame,
-                row = title_col,
+                rows = [title_col],
                 selected_rows = [title]
             );
 

@@ -66,19 +66,28 @@ def get_by_absence_reasons(
         type = "list"
     );
 
+    # Ask user for year
+    year = view.prompt_user(
+        prompt = "Enter the year you want to analyse",
+        type = "year"
+    );
+
     # Get every absence reason 
     absence_reasons = absences.get_absence_reasons();
     
-    # Get one frame per school type detailing authorised absences over time by absence reason
-    frames = absences.get_batch_multi_agg_frames(
-        title_col = title_col,
-        titles = school_types,
-        datas_category = datas_category,
+    # Get one frame with absence reasons as rows and school types as columns 
+    frames = absences.get_multi_col_agg_frame(
         datas = absence_reasons,
-        col_prefix = authorised_prefix
+        datas_category = datas_category,
+        row = title_col,
+        selected_rows = school_types,
+
     );
 
     return frames;
+
+frames = get_by_absence_reasons();
+breakpoint();
 
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
@@ -96,16 +105,16 @@ def get_unauthorised_absences():
 
     return frames;
 
-frames = get_unauthorised_absences();
-view.display_multiple_frames(frames);
-
 # PART 2A
 # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
 
 """
-Get authorised and unauthorised absence data by school type for requested local authorities in a given year
+Compare two local authorities in a given year
+@param datas: list of data labels to compare by
 """
-def get_by_la_year():
+def get_by_la_year(
+    datas = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "sess_authorised_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "sess_overall_percent_pa_10_exact"],
+):
     # Get local authorities from the user
     local_authorities = view.prompt_user(
         prompt = "Enter the local authorities you want to compare", 
@@ -117,15 +126,9 @@ def get_by_la_year():
         prompt = "Enter the year you want to analyse", 
         type = "int"
     );
-    
-    # Specify the columns to be analysed
-    columns = ["school_type", "authorised_absences", "unauthorised_absences"];
-    
-
-data = get_by_la_year();
-
-# Display the data
-view.display_data(data);
+ 
+frame = get_by_la_year();
+view.display_frame(frame);
 
 # TODO analyse data
 
