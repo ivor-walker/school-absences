@@ -2,25 +2,28 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, regexp_replace
 
 """
-Class that produces data: loads the absences data and provides methods to extract information from it
+Class to load and manipulate any csv file with Spark
 """
-class Data:
+class SparkCSV:
     
     """ 
-    Constructor: creates a SparkSession and load the data
-    absences_loc: str, the location of the absences file
+    Constructor: creates a SparkSession, load data and perform preprocessing
+
+    @param csv_loc: str, the location of data to load
     """
-    def __init__(self, 
-        absences_loc = "data/Absence_3term201819_nat_reg_la_sch.csv"
-    ):
+    def __init__(self, csv_loc):
         self.__create_spark_session();
 
-        self.__load_data(csv_loc = absences_loc);
+        self.__load_data(csv_loc);
         
+        # Get cases of each column
         self.__get_case_mapping();
 
     """
     Create a SparkSession
+
+    @param master: str, the master to use
+    @param app_name: str, the name of the application
     """
     def __create_spark_session(self,
         master = "local[*]",
@@ -35,11 +38,10 @@ class Data:
 
     """
     Load the data from the absences file as an Apache dataframe, and set it to the data attribute
+
     @param csv_loc: str, the location of data to load
     """
-    def __load_data(self,
-        csv_loc = None
-    ):
+    def __load_data(self, csv_loc):
         self.__data = ( 
             self.__spark.read
             .option("inferSchema", "true")
@@ -49,6 +51,11 @@ class Data:
     
     """
     Get inferred case of values in each string column in the data
+
+    @param n: int, the number of values to sample
+    @param minor_words: list of str, the minor words to exclude from proper case
+
+    @return case_mapping: dict, the mapping of each string column to its inferred case
     """
     def __get_case_mapping(self,
         n = 50,
@@ -87,11 +94,12 @@ class Data:
 
     """
     Infer case of a string
+
     @param string: str, the string to infer the case of
+
+    @return case: str, the inferred case of the string
     """
-    def __infer_case(self,
-        string = None,
-    ):
+    def __infer_case(self, string):
         # Trim string
         string = string.strip();
 
@@ -138,22 +146,31 @@ class Data:
     
     """
     Helper method to check if string is title
+
     @param string: str, the string to check
+
+    @return is_title: bool, whether the string is title case
     """
     def __is_title(self, string):
         return string[0].isupper();
 
     """
     Helper method to convert string to title
+
     @param string: str, the string to convert
+
+    @return title: str, the string converted to title case
     """
     def __to_title(self, string):
         return string[0].upper() + string[1:];
 
     """
     Convert a string to a specified case
+
     @param string: str, the string to convert
     @param case: str, the case to convert the string to
+
+    @return converted_string: str, the string converted to the specified case
     """
     def __convert_case(self,
         string = None,
@@ -182,6 +199,9 @@ class Data:
     
     """
     Convert all non-word string columns to non-string columns
+
+    @param string_col: str, the column to convert
+    @param case: str, the case to convert the column to
     """
     def __convert_str_col(self,
         string_col = None,
@@ -207,25 +227,31 @@ class Data:
 
     """
     Produce dataframe of aggregates of data, by all values of a single column and row label
-    @param data: str, label of data to aggregate
-    @param row: str, label of row values to use
-    @param selected_rows: list of str, 
-    @param col: str, label of column values to use (default year)
+
+    @param filter_cols: list of str, the columns to filter by
+    @param filter_passes: list of str, the values in filter_cols to filter by
+    @param data: str, the data to aggregate
+    @param row: str, the row label to aggregate by
+    @param col: str, the column label to aggregate by
+
+    @return frame: dataframe, the aggregated frame
     """
-    def get_agg_frame(self, 
+    def _get_agg_frame(self, 
+        filter_cols = [],
+        filter_passes = [],
         data = None, 
-        rows = [],
-        selected_rows = [],
-        col = "time_period"
+        row = None,
+        col = None
     ):
+        # Get frame with requested columns
         requested_cols = [data, row, col];
-        frame = self.get_frame(
+        frame = self._get_frame(
             requested_cols = requested_cols,
-            rows = rows,
-            selected_rows = selected_rows
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes
         ); 
 
-        # Transpose frame
+        # Transpose and aggregate to get requested frame 
         frame = self.__get_grouped_frame(
             frame = frame,
             group_by = [row],
@@ -236,6 +262,166 @@ class Data:
         return frame;
     
     """
+    Get a subframe with given columns
+
+    @param frame: dataframe, the dataframe to get the subset from
+    @param requested_cols: list of str, the columns to select
+    @param filter_cols: list of str, the columns to filter by
+    @param filter_passes: list of str, the values in filter_cols to filter by
+    @param or_and: str, the operator to use when filtering by selected rows
+
+    @return frame: dataframe, the subset of the dataframe
+    """
+    def _get_frame(self,
+        frame = None,
+        requested_cols = None,
+        filter_cols = [],
+        filter_passes = [],
+        or_and = "and"
+    ):
+        if frame is None:
+            frame = self.__data;
+        
+        if requested_cols is None:
+            requested_cols = frame.columns;
+
+        # Create filter query
+        filter_query = self.__create_filter_query(
+            frame = frame,
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes, 
+            or_and = or_and
+        );
+        
+        # Select requested columns and filter by selected rows
+        frame = frame.select(requested_cols).filter(filter_query);
+        
+        # Remove rows with missing data
+        frame = frame.dropna();
+
+        return frame;
+    
+    """
+    Generate a filter query to select rows from a frame 
+
+    @param frame: dataframe, the dataframe to get the subset from
+    @param filter_cols: list of str, the columns to filter by
+    @param filter_passes: list of str, the values in filter_cols to filter by
+    @param or_and: str, the operator to use when filtering by selected rows
+
+    @return query: str, the filter query
+    """
+    def __create_filter_query(self,
+        frame = None,
+        filter_cols = [],
+        filter_passes = [],
+        or_and = None
+    ):
+        # Convert filter passes to correct case and ensure they exist
+
+        # For every column and values to be filtered by
+        for index, filter_col in enumerate(filter_cols):
+
+            # Convert any integer arguments to string
+            filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
+
+            # Get filter values to conform to case of column if required 
+            if filter_col in self.__case_mapping:
+                case = self.__case_mapping[filter_col];
+                filter_passes[index] = [self.__convert_case(filter_pass, case) for filter_pass in filter_passes[index]]; 
+
+            selected_filter_passes = filter_passes[index];
+            
+            # Check if any values in filter_passes are missing
+            missing_filter_passes = [
+                filter_pass for filter_pass in selected_filter_passes 
+                if frame.filter(col(filter_col) == filter_pass)
+                # Since we are only checking for existence, we can limit to 1 row
+                .limit(1)
+                .count() == 0
+            ];
+
+            # Raise error if any values are missing
+            if len(missing_filter_passes) > 0:
+                missing_filter_passes = "', '".join(missing_filter_passes);
+                raise ValueError(f"Rows '{missing_filter_passes}' not found in {filter_col}!");
+        
+        # For each filter, combine all pass values into a single string 
+        filter_passes = ["', '".join(filter_pass) for filter_pass in filter_passes];
+
+        # Create SQL filter query for each filter
+        queries = [
+            f"{filter_col} in ('{filter_passes[index]}')" for index, filter_col in enumerate(filter_cols)
+        ];
+    
+        # Join all queries together
+        query = f" {or_and} ".join(queries);
+        
+        return query;
+
+    """
+    Group by, pivot and sum over a frame
+    """
+    def __get_grouped_frame(self,
+        frame = None,
+        group_by = None,
+        pivot = None,
+        sum = None
+    ):
+        return frame.groupBy(group_by).pivot(pivot).sum(sum);
+    
+    """
+    Get a frame with aggregates of multiple columns 
+    @param frame: dataframe, the dataframe to get the subset from
+    @param rows: list of str, the row labels to check
+    @param selected_rows: list of str, the selected rows to filter by
+    @param datas_category: str, the category of all datas to aggregate
+    @param datas: list of str, the datas to aggregate
+    @param col: str, the column to use as the column of each frame
+    """
+    def _get_multi_col_agg_frame(self,
+        frame = None,
+        rows = [],
+        selected_rows = [],
+        datas_category = None,
+        datas = None,
+        col = None
+    ):
+        # Get frame from data if not provided
+        if frame is None:
+            requested_cols = [col] + datas;
+            frame = self.get_frame(
+                requested_cols = requested_cols,
+                rows = rows,
+                selected_rows = selected_rows
+            );
+
+        # Create a stack expression
+        n_datas = len(datas);
+        stack_expr = f"""
+            stack(
+                {n_datas},
+                {", ".join([f"'{data}', {data}" for data in datas])}
+            ) as ({datas_category}, count)
+        """;
+
+        # Unpivot frame by stacking data columns
+        frame = frame.selectExpr(col, stack_expr);
+
+        # Group by and pivot frame
+        frame = self.__get_grouped_frame(
+            frame = frame,
+            group_by = [datas_category],
+            pivot = col,
+            sum = "count"
+        );
+        
+        # Sort data by last column
+        last_col = frame.columns[-1];
+        frame = frame.orderBy(frame[last_col].asc());
+        
+        return frame;
+    """
     Get multiple aggregated frames containing one type of data
     @param datas: list of str, the datas to aggregate
     @param rows: list of str, rows of frames 
@@ -244,7 +430,7 @@ class Data:
     @param default_col: str, default column
     """
 
-    def get_batch_agg_frames(self,
+    def _get_batch_agg_frames(self,
         datas = None,
         rows = None,
         cols = None,
@@ -258,7 +444,7 @@ class Data:
 
         for index, data in enumerate(datas):
             # Get frame for data
-            frame = self.get_agg_frame(
+            frame = self._get_agg_frame(
                 data = data,
                 row = rows[index],
                 col = cols[index]
@@ -270,104 +456,6 @@ class Data:
         return frames;
 
     """
-    Get a subframe with given columns
-    @param frame: dataframe, the dataframe to get the subset from
-    @param requested_cols: list of str, the columns to select
-    @param rows: list of str, the row labels to check
-    @param selected_rows: list of str, the selected rows to filter by
-    @param or_and: str, the operator to use when filtering by selected rows
-    """
-    def get_frame(self,
-        frame = None,
-        requested_cols = None,
-        rows = [],
-        selected_rows = [],
-        or_and = "and"
-    ):
-        if frame is None:
-            frame = self.__data;
-        
-        if requested_cols is None:
-            requested_cols = frame.columns;
-
-        # Create filter query
-        filter_query = self.__create_filter_query(
-            frame = frame,
-            rows = rows,
-            selected_rows = selected_rows,
-            or_and = or_and
-        );
-        
-        # Select requested columns and filter by selected rows
-        frame = frame.select(requested_cols).filter(filter_query);
-        
-        # Remove rows with missing data
-        frame = frame.dropna();
-
-        return frame;
-
-    """
-    Generate a filter query to select rows from a frame 
-    @param frame: dataframe, the dataframe to get the subset from
-    @param rows: list of str, the column labels to get values from
-    @param selected_rows: list of str, the values in rows to select
-    @param or_and: str, the operator to use when filtering by selected rows
-    """
-    def __create_filter_query(self,
-        frame = None,
-        rows = None,
-        selected_rows = None,
-        or_and = None
-    ):
-        # Convert selected rows to correct case and ensure they exist in frame
-        for index, row in enumerate(rows):
-            # Convert any integer arguments to string
-            selected_rows[index] = [str(selected_row) for selected_row in selected_rows[index]];
-
-            # Get selected rows to conform to case of row in frame if required
-            if row in self.__case_mapping:
-                case = self.__case_mapping[row];
-                selected_rows[index] = [self.__convert_case(selected_row, case) for selected_row in selected_rows[index]]; 
-            
-
-            rows_to_select = selected_rows[index];
-            
-            # Get missing selected rows
-            missing_selected_rows = [
-                selected_row for selected_row in rows_to_select 
-                if frame.filter(col(row) == selected_row)
-                # Since we are only checking for existence, we can limit to 1 row
-                .limit(1)
-                .count() == 0
-            ];
-
-            # Raise error if any selected rows are missing 
-            if len(missing_selected_rows) > 0:
-                missing_selected_rows = "', '".join(missing_selected_rows);
-                raise ValueError(f"Rows '{missing_selected_rows}' not found in {row}!");
-        
-        # Create SQL filter queries for each selected row
-        selected_rows = ["', '".join(selected_row) for selected_row in selected_rows];
-        queries = [
-            f"{row} in ('{selected_rows[index]}')" for index, row in enumerate(rows)
-        ];
-    
-        # Join all queries together
-        query = f" {or_and} ".join(queries);
-        
-        return query;
-    """
-    Group by, pivot and sum over a frame
-    """
-    def __get_grouped_frame(self,
-        frame = None,
-        group_by = None,
-        pivot = None,
-        sum = None
-    ):
-        return frame.groupBy(group_by).pivot(pivot).sum(sum);
-
-    """
     Produces multiple aggregated frames containing multiple types of data
     @param title_col: str, the column to use as the title
     @param titles: list of str, the titles to use
@@ -376,7 +464,7 @@ class Data:
     @param col: str, the column to use as the column of each frame
     @param col_prefix: str, the prefix to remove from values of the column
     """
-    def get_batch_multi_agg_frames(self,
+    def _get_batch_multi_agg_frames(self,
         title_col = None,
         titles = None,
         datas_category = None,
@@ -422,62 +510,4 @@ class Data:
         return frames;
     
     
-    """
-    Get a frame with aggregates of multiple columns 
-    """
-    def get_multi_col_agg_frame(self,
-        frame = None,
-        rows = [],
-        selected_rows = [],
-        datas_category = None,
-        datas = None,
-        col = None
-    ):
-        # Get frame from data if not provided
-        if frame is None:
-            requested_cols = [col] + datas;
-            frame = self.get_frame(
-                requested_cols = requested_cols,
-                rows = rows,
-                selected_rows = selected_rows
-            );
-
-        # Create a stack expression
-        n_datas = len(datas);
-        stack_expr = f"""
-            stack(
-                {n_datas},
-                {", ".join([f"'{data}', {data}" for data in datas])}
-            ) as ({datas_category}, count)
-        """;
-
-        # Unpivot frame by stacking data columns
-        frame = frame.selectExpr(col, stack_expr);
-
-        # Group by and pivot frame
-        frame = self.__get_grouped_frame(
-            frame = frame,
-            group_by = [datas_category],
-            pivot = col,
-            sum = "count"
-        );
-        
-        # Sort data by last column
-        last_col = frame.columns[-1];
-        frame = frame.orderBy(frame[last_col].asc());
-        
-        return frame;
-
-    """
-    Get all column names which are reasons for absence
-    @return list of str, the names of the columns which are reasons for absence
-    """
-    def get_absence_reasons(self):
-        return [col for col in self.__data.columns if self.__is_reason_for_absence(col)];
-
-    """
-    Helper method to check if column is a reason for absence
-    @param col: str, the column to check
-    """
-    def __is_reason_for_absence(self, col):
-        return col.startswith("sess_auth_");
+    

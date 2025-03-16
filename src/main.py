@@ -1,18 +1,15 @@
-from data import Data;
+from absences import Absences;
 from view import View;
 
 # Instantiate data and view
-# Part 1a and 1b performed in constructor of data
-absences = Data(); 
+# Part 1a and 1b performed in constructor of Data class, initialised by Absences class
+absences = Absences(); 
 view = View();
 
-# PART 1D
+# PART 1C
 # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
 # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
 
-"""
-Get number of pupil enrolments for requested local authorities
-"""
 def get_by_la():
     # Ask user for local authorities 
     local_authorities = view.prompt_user(
@@ -20,46 +17,41 @@ def get_by_la():
         type = "list"
     );
     
-    # Get enrolment data for the requested local authorities
-    frame = absences.get_agg_frame(
-        data = "enrolments", 
-        rows = ["la_name"], 
-        selected_rows = [local_authorities],
-    );
+    frame = absences.get_by_la(local_authorities);
 
-    return frame;
+    view.display_frame(frame);
+
+get_by_la();
 
 # PART 1D
 # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
-"""
-Get authorised absence data for requested school types
-"""
+
 def get_by_school_type():
     # Ask user for school types 
     school_types = view.prompt_user(
         prompt = "Enter the school types you want to analyse", 
         type = "list"
     );
-    
-    # Get authorised absence data for the school types
-    frame = absences.get_agg_frame(
-        data = "sess_authorised", 
-        rows = ["school_type"], 
-        selected_rows = [school_types],
+        
+    # Ask user for year
+    year = view.prompt_user(
+        prompt = "Enter the year you want to analyse",
+        type = "int"
     );
 
-    return frame;
+    frame = absences.get_by_school_type(
+        school_types = school_types,
+        years = [year]
+    );
+
+    view.display_frame(frame);
+
+get_by_school_type();
 
 # Part 1D EXTENSION
 # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
-"""
-Get authorised absence data by absence reasons for requested school types
-"""
-def get_by_absence_reasons(
-    authorised_prefix = "sess_auth_",
-    title_col = "school_type",
-    datas_category = "absence_reasons"
-):
+
+def get_by_school_type_detailed(): 
     # Ask user for school types
     school_types = view.prompt_user(
         prompt = "Enter the school types you want to analyse", 
@@ -72,22 +64,14 @@ def get_by_absence_reasons(
         type = "int"
     );
 
-    # Get every absence reason 
-    absence_reasons = absences.get_absence_reasons();
-    
-    # Get one frame with absence reasons as rows and school types as columns 
-    frames = absences.get_multi_col_agg_frame(
-        datas = absence_reasons,
-        datas_category = datas_category,
-        col = title_col,
-        rows = [title_col, "time_period"],
-        selected_rows = [school_types, [year]]
+    frame = absences.get_school_type_detailed(
+        school_types = school_types,
+        years = [year]
     );
 
-    return frames;
+    view.display_frame(frame);
 
-frames = get_by_absence_reasons();
-breakpoint();
+get_by_school_type_detailed();
 
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
@@ -104,6 +88,7 @@ def get_unauthorised_absences():
     );
 
     return frames;
+
 
 # PART 2A
 # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
