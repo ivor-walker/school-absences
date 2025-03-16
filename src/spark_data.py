@@ -532,3 +532,18 @@ class SparkData:
             frames[title] = frame;
 
         return frames;
+    
+    """
+    Helper function to find column of first instance of given value
+
+    @param needle: str, the value to search for
+
+    @return col: str, the column of the first instance of the value
+    """
+    def _get_first_instance_col(self, needle):
+    ):
+        for col in self._get_cols():
+            if frame.filter(col == needle).limit(1).count() > 0:
+                return col;
+       
+        raise ValueError(f"Value '{needle}' not found in data!");

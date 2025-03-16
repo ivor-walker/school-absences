@@ -14,12 +14,12 @@ class Absences(SparkData):
         super().__init__(absences_loc);
 
     """
-    Helper method to add default filter columns and pass values to arguments
+    Helper method to add default filter settings to arguments
 
     @param filter_cols: list of str, the columns to filter by
-    @param default_filter_cols: list of str, the default columns to add
+    @param default_filter_cols: list of str, the default columns to add. Default geographic_level to avoid totals appearing in aggregation
     @param filter_passes: list of str, the values to filter by
-    @param default_filter_passes: list of str, the default values to add
+    @param default_filter_passes: list of str, the default values to add. Default national to access as few records as possible
 
     @return tuple of list of str, list of str, the combined filter columns and passes
     """
@@ -75,7 +75,6 @@ class Absences(SparkData):
     """
     Get authorised absence data for requested school types and years
 
-    @param filter_cols: list of str, the columns to filter by
     @param school_types: list of str, the school types to filter by
     @param years: list of str, the years to filter by
     @param row: str, the column to use as rows
@@ -110,11 +109,10 @@ class Absences(SparkData):
     """
     Get authorised absence data by absence reasons for requested school types and years
 
-    @param filter_cols: list of str, the columns to filter by
     @param school_types: list of str, the school types to filter by
     @param years: list of str, the years to filter by
     @param cols_category: str, the category of columns to use
-    @param absence_reasons: list of str, the columns to use as rows
+    @param absence_reasons: list of str, list of reasons for absence
     @param row: str, the column to use as rows
     @param authorised_prefix: str, the prefix to remove from the column names
 
@@ -170,4 +168,47 @@ class Absences(SparkData):
         prefix = "sess_auth_"
     ):
         return col.startswith(prefix);
+    
+    """
+    Get unauthorised absences in a requested year by region name or local authority name
+    """
+    def get_unauth_by_la_region(self,
+        geographic_levels = ["Local authority"],
+        region_or_la = [],
+        years = [],
+        col = "sess_unauth",
+        sess_prefix = "sess_"
+    ):
+        # Determine whether inputs are regions or local authorities
+        cols_of_input = [self._get_first_instance_col(name) for name in region_or_la];
+        
+        # Include either region name and/or local authority name in filter columns
+        filter_cols = [];
+        if "region_name" in cols_of_input:
+            filter_cols.append("region_name");
 
+        if "la_name" in cols_of_input:
+            filter_cols.append("la_name");
+
+        if len(filter_cols) == 2:
+            raise ValueError("Both region and local authority names were provided. Please provide one or the other.");
+        
+        row = filter_cols[0];
+
+        # Create filters as usual
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = [region_or_la, years],
+            default_filter_passes = [geographic_levels]
+        );
+
+        # Get unauthorised absence data for the requested regions or local authorities
+
+        frame = self._get_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            col = col,
+            row = row
+        );
+
+        return frame;

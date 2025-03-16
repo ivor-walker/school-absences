@@ -34,8 +34,6 @@ def get_by_la(
 
     view.display_frame(frame);
 
-get_by_la();
-
 # PART 1D
 # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
 
@@ -67,8 +65,6 @@ def get_by_school_type(
     );
 
     view.display_frame(frame);
-
-get_by_school_type();
 
 # Part 1D EXTENSION
 # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
@@ -102,24 +98,39 @@ def get_by_school_type_detailed(
 
     view.display_frame(frame);
 
-get_by_school_type_detailed();
 
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
 
-"""
-Get unauthorised absences in a certain year, by region name and local authority name
-"""
-def get_unauthorised_absences():
-    # Create dictionary of both region and local authority data
-    frames = absences.get_batch_agg_frames(
-        datas = ["sess_unauth_totalreasons", "sess_unauth_totalreasons"],
-        rows = ["region_name", "la_name"],
-        titles = ["Region", "Local Authority"]
+def get_unauthorised_absences(
+    use_default = True,
+    default_year = "201819",
+    default_region_or_la = ["North East", "Hartlepool"]
+):
+    if use_default:
+        year = default_year;
+    
+    else:
+        # Ask user for year
+        year = view.prompt_user(
+            prompt = "Enter the year you want to analyse",
+            type = "int"
+        );
+
+    # Ask user for region or local authority
+    region_or_la = view.prompt_user(
+        prompt = "Enter the regions and/or local authorities you want to analyse",
+        type = "list"
+    );
+    
+    frame = absences.get_unauthorised_absences(
+        region_or_la = region_or_la,
+        years = [year]
     );
 
-    return frames;
+    view.display_frame(frame);
 
+get_unauthorised_absences();
 
 # PART 2A
 # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
