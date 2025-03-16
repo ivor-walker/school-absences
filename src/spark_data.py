@@ -404,39 +404,39 @@ class SparkData:
     """
     def _get_multi_col_agg_frame(self,
         frame = None,
-        rows = [],
-        selected_rows = [],
-        datas_category = None,
-        datas = None,
-        col = None
+        filter_cols = [], 
+        filter_passes = [],
+        cols_category = None,
+        cols = [],
+        row = None
     ):
         # Get frame from data if not provided
         if frame is None:
-            requested_cols = [col] + datas;
-            frame = self.get_frame(
+            requested_cols = cols + [row];
+            frame = self._get_frame(
                 requested_cols = requested_cols,
-                rows = rows,
-                selected_rows = selected_rows
+                filter_cols = filter_cols,
+                filter_passes = filter_passes
             );
 
-        # Create a stack expression
-        n_datas = len(datas);
+        # Create a stack expression 
+        n_datas = len(cols);
         stack_expr = f"""
             stack(
                 {n_datas},
-                {", ".join([f"'{data}', {data}" for data in datas])}
-            ) as ({datas_category}, count)
+                {", ".join([f"'{col}', {col}" for col in cols])}
+            ) as ({cols_category}, count)
         """;
 
         # Unpivot frame by stacking data columns
-        frame = frame.selectExpr(col, stack_expr);
-
+        frame = frame.selectExpr(row, stack_expr);
+        
         # Group by and pivot frame
         frame = self.__get_grouped_frame(
             frame = frame,
-            group_by = [datas_category],
-            pivot = col,
-            sum = "count"
+            row = cols_category,
+            col = row, 
+            data = "count"
         );
         
         # Sort data by last column
@@ -499,13 +499,13 @@ class SparkData:
         frames = {};
         
         # Get initial frame containing all data
-        initial_frame = self.get_frame(
+        initial_frame = self._get_frame(
             requested_cols = [title_col, col] + datas
         );
         
         for title in titles:
             # Get frame with only data for title
-            frame = self.get_frame(
+            frame = self._get_frame(
                 frame = initial_frame,
                 rows = [title_col],
                 selected_rows = [title]
