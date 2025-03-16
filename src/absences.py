@@ -47,7 +47,7 @@ class Absences(SparkData):
 
     @return DataFrame, the number of pupil enrolments for the requested local authorities
     """
-    def get_by_la(self,
+    def get_enrolment_by_la(self,
         geographic_levels = ["Local authority"],
         filter_cols = ["la_name"],
         local_authorities = [],
@@ -83,7 +83,7 @@ class Absences(SparkData):
 
     @return DataFrame, the authorised absence data for the requested school types
     """
-    def get_by_school_type(self,
+    def get_auth_by_school_type(self,
         filter_cols = ["school_type", "time_period"],
         school_types = [],
         years = [],
@@ -118,7 +118,7 @@ class Absences(SparkData):
 
     @return DataFrame, the authorised absence data by absence reasons for the requested school types
     """
-    def get_by_school_type_detailed(self,
+    def get_auth_by_school_type_detailed(self,
         filter_cols = ["school_type", "time_period"],
         school_types = [],
         years = [],
@@ -176,7 +176,7 @@ class Absences(SparkData):
         geographic_levels = ["Local authority"],
         region_or_la = [],
         years = [],
-        col = "sess_unauth",
+        col = "sess_unauthorised",
         sess_prefix = "sess_"
     ):
         # Determine whether inputs are regions or local authorities
@@ -194,8 +194,11 @@ class Absences(SparkData):
             raise ValueError("Both region and local authority names were provided. Please provide one or the other.");
         
         row = filter_cols[0];
+        
+        # Add time period to filter columns
+        filter_cols.append("time_period");
 
-        # Create filters as usual
+        # Add default filters as usual 
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [region_or_la, years],
@@ -203,7 +206,6 @@ class Absences(SparkData):
         );
 
         # Get unauthorised absence data for the requested regions or local authorities
-
         frame = self._get_agg_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
@@ -212,3 +214,74 @@ class Absences(SparkData):
         );
 
         return frame;
+    
+    """ 
+    Produce data for comparing local authorities in a given year
+
+    @param local_authorities: list of str, the local authorities to compare
+    @param years: list of str, the years to compare
+    @param cols: list of str, the datas to compare local authorities by
+
+    @return DataFrame, the data for the requested local authorities
+    """
+    def compare_la_in_year(self,
+        geographic_levels = ["Local authority"],
+        filter_cols = ["la_name", "time_period"],
+        local_authorities = [],
+        years = [],
+        cols_category = "important_stats",
+        cols = [], 
+        row = "la_name",
+        authorised_prefix = "sess_auth_"
+    ):
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = [local_authorities, years],
+            default_filter_passes = [geographic_levels]
+        );
+        
+        # Get one frame with important stats as rows and local authorities as columns 
+        frame = self._get_multi_col_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            cols_category = cols_category,
+            cols = cols,
+            row = row
+        );
+
+        return frame;
+
+    """
+    Get dictionary of samples of keys to use as default values
+
+    @param keys: dict of str, the keys to get default values for and the number of values to get
+
+    @return dict of str, the default values for the keys
+    """
+    def get_default_values(self,
+        keys = {
+            "school_type" : 3,
+            "time_period": 1,
+            "la_name" : 10,
+            "region_name" : 3
+        },
+    ):
+        # Create a sample with the size of the smallest value required to satisfy all keys
+        n = max(keys.values());
+        first_values = self._get_first_values(n = n);
+        
+        # Get values of each key in each row
+        rows = [{key: first_value[key] for key in keys} for first_value in first_values];
+
+        # Get inverted dictionary
+        dictionary = {key: [row[key] for row in rows] for key in keys};
+
+        # Limit the number of values to the number requested
+        dictionary = {key: dictionary[key][:keys[key]] for key in keys};
+
+        # Set single level lists to single values
+        for key in keys:
+            if len(dictionary[key]) == 1:
+                dictionary[key] = dictionary[key][0];
+
+        return dictionary;

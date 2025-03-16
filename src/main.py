@@ -1,6 +1,8 @@
 from absences import Absences;
 from view import View;
 
+import random;
+
 # Instantiate data and view
 # Part 1a and 1b performed in constructor of Data class, initialised by Absences class
 print("Loading data...");
@@ -9,18 +11,22 @@ absences = Absences();
 print("Loading graphics...");
 view = View();
 
+# Set default user inputs
+defaults = absences.get_default_values();
+print(defaults);
+print("Defaults set!");
+
 print("Loading complete!");
 
 # PART 1C
 # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
 # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
 
-def get_by_la(
+def get_enrolment_by_la(
     use_default = True,
-    default_local_authorities = ["Sheffield", "Barnsley", "Rotherham", "Doncaster"]
 ):
     if use_default: 
-        local_authorities = default_local_authorities;
+        local_authorities = defaults["la_name"];
     else:
         # Ask user for local authorities 
         local_authorities = view.prompt_user(
@@ -37,14 +43,12 @@ def get_by_la(
 # PART 1D
 # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
 
-def get_by_school_type(
+def get_auth_by_school_type(
     use_default = True,
-    default_school_types = ["State-funded primary", "State-funded secondary", "Special", "Total"],
-    default_year = "201819"
 ):
     if use_default:
-        school_types = default_school_types;
-        year = default_year;
+        school_types = defaults["school_type"];
+        year = defaults["time_period"];
 
     else:
         # Ask user for school types 
@@ -59,7 +63,7 @@ def get_by_school_type(
             type = "int"
         );
 
-    frame = absences.get_by_school_type(
+    frame = absences.get_auth_by_school_type(
         school_types = school_types,
         years = [year]
     );
@@ -69,14 +73,12 @@ def get_by_school_type(
 # Part 1D EXTENSION
 # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
 
-def get_by_school_type_detailed(
+def get_auth_by_school_type_detailed(
     use_default = True,
-    default_school_types = ["State-funded primary", "State-funded secondary", "Special", "Total"],
-    default_year = "201819"
 ): 
     if use_default:
-        school_types = default_school_types;
-        year = default_year;
+        school_types = defaults["school_type"];
+        year = defaults["time_period"];
     
     else:
         # Ask user for school types
@@ -91,7 +93,7 @@ def get_by_school_type_detailed(
             type = "int"
         );
 
-    frame = absences.get_by_school_type_detailed(
+    frame = absences.get_auth_by_school_type_detailed(
         school_types = school_types,
         years = [year]
     );
@@ -102,14 +104,19 @@ def get_by_school_type_detailed(
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
 
-def get_unauthorised_absences(
+def get_unauth_by_la_region(
     use_default = True,
-    default_year = "201819",
-    default_region_or_la = ["North East", "Hartlepool"]
 ):
     if use_default:
-        year = default_year;
-    
+        year = defaults["time_period"];
+
+        # Randomly select region or local authority
+        coin = random.randint(0, 1);
+        if coin == 0:
+            region_or_la = defaults["region_name"];
+        else:
+            region_or_la = defaults["la_name"];
+
     else:
         # Ask user for year
         year = view.prompt_user(
@@ -117,45 +124,54 @@ def get_unauthorised_absences(
             type = "int"
         );
 
-    # Ask user for region or local authority
-    region_or_la = view.prompt_user(
-        prompt = "Enter the regions and/or local authorities you want to analyse",
-        type = "list"
-    );
+        # Ask user for mixed region and local authority
+        region_or_la = view.prompt_user(
+            prompt = "Enter the regions or local authorities you want to analyse",
+            type = "list"
+        );
     
-    frame = absences.get_unauthorised_absences(
+    frame = absences.get_unauth_by_la_region(
         region_or_la = region_or_la,
         years = [year]
     );
 
     view.display_frame(frame);
 
-get_unauthorised_absences();
-
 # PART 2A
 # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
 
-"""
-Compare two local authorities in a given year
-@param datas: list of data labels to compare by
-"""
-def get_by_la_year(
-    datas = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "sess_authorised_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "sess_overall_percent_pa_10_exact"],
+def compare_la_in_year(
+    use_default = True,
+    cols = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "sess_authorised_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "sess_overall_percent_pa_10_exact"],
 ):
-    # Get local authorities from the user
-    local_authorities = view.prompt_user(
-        prompt = "Enter the local authorities you want to compare", 
-        type = "list"
-    );
+    if use_default:
+        local_authorities = defaults["la_name"];
+        year = defaults["time_period"];
+
+    else:
+        # Get local authorities from the user
+        local_authorities = view.prompt_user(
+            prompt = "Enter the local authorities you want to compare", 
+            type = "list"
+        );
+        
+        # Get the year from the user
+        year = view.prompt_user(
+            prompt = "Enter the year you want to analyse", 
+            type = "int"
+        );
     
-    # Get the year from the user
-    year = view.prompt_user(
-        prompt = "Enter the year you want to analyse", 
-        type = "int"
+    frame = absences.compare_la_in_year(
+        local_authorities = local_authorities,
+        years = [year],
+        cols = cols 
     );
+
+    view.display_frame(frame);
+    return frame;
  
-frame = get_by_la_year();
-view.display_frame(frame);
+frame = compare_la_in_year();
+breakpoint();
 
 # TODO analyse data
 

@@ -27,18 +27,18 @@ class View:
         list_prompt = f"{prompt} (separated by {split_char}): ";
         user_input = input(list_prompt);
         
-        # Check user input contains split char
-        if split_char not in user_input:
-            print(f"Invalid list.");
+        try:
+            # Remove whitespace in list
+            user_input = user_input.split(split_char);
+            user_input = [item.strip() for item in user_input];
+            split_char.join(user_input);
+
+            return user_input;
+
+        except: 
+            print("Invalid list.");
             return self.__prompt_for_list(prompt, split_char);
-
-        # Remove whitespace in list
-        user_input = user_input.split(split_char);
-        user_input = [item.strip() for item in user_input];
-        split_char.join(user_input);
-
-        return user_input;
-    
+        
     """
     Ask for and recieve a int from the user
     """
@@ -50,11 +50,12 @@ class View:
         # Check user input is a int
         try:
             integer = int(user_input);
+            return integer;
+
         except:
-            print("Invalid year.");
+            print("Invalid integer.");
             return self.__prompt_for_int(prompt);
 
-        return integer;
     """
     Display a dataframes to the user
     @param frame: frameframe to display

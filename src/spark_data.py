@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_replace
+import pyspark.sql.functions as F
 
 """
 Class to load and manipulate data with Spark
@@ -60,15 +60,24 @@ class SparkData:
         return self.__data.columns;
 
     """
-    Get inferred case of values in each string column in the data
+    Get first n distinct non-NA rows from a column
+    """
+    def _get_first_values(self,
+        n = 5,
+    ):
+        return self.__data.dropna().limit(n).collect();
 
-    @param n: int, the number of values to sample
+    """
+    Get inferred case of values in each string column in the data based on a sample
+
+
+    @param sample_size: int, the number of values to sample
     @param minor_words: list of str, the minor words to exclude from proper case
 
     @return case_mapping: dict, the mapping of each string column to its inferred case
     """
     def __get_case_mapping(self,
-        n = 50,
+        sample_size = 50,
         minor_words = ["and", "or", "the", "a", "an", "in", "on", "at", "to", "of", "for", "by", "with", "from", "upon"]
     ):
         self.__minor_words = minor_words;
@@ -77,10 +86,10 @@ class SparkData:
         # Get all columns with a string data type
         string_cols = [col for col in self.__data.columns if str(self.__data.schema[col].dataType) == "StringType()"];
         
+        # Get sample to infer cases from
+        subset = self._get_first_values(n = sample_size);
+        
         for string_col in string_cols:
-            # Get subset of data with non-null values
-            subset = self.__data.filter(col(string_col).isNotNull()).select(string_col).limit(n).collect();
-
             # Get inferred cases of values in string_column
             inferred_cases = [self.__infer_case(row[string_col]) for row in subset];
             
@@ -99,8 +108,13 @@ class SparkData:
             # Convert non-word values to corresponding data types 
             if case in ["date", "numeric", "symbol"]:
                 self.__convert_str_col(string_col = string_col, case = case);
+
+            elif case == "unknown":
+                raise ValueError(f"Case of '{string_col}' could not be inferred!");
+
             else:
                 self.__case_mapping[string_col] = case;
+
 
     """
     Infer case of a string
@@ -118,7 +132,7 @@ class SparkData:
             return "date";
         if string.isnumeric():
             return "numeric";
-        if not any([char.isalpha() for char in string]):
+        if not all([char.isalnum() or char == " " or char == "-" for char in string]):
             return "symbol";
 
         # Entirely lower or upper case
@@ -151,9 +165,9 @@ class SparkData:
             if all([self.__is_title(word) for word in found_major_words]) and all([word.islower() for word in found_minor_words]):
                 return "proper";
         
-        # If case cannot be inferred, throw error
-        raise ValueError(f"Case of '{string}' could not be inferred!");
-    
+        # If case cannot be inferred, return "unknown"
+        return "unknown";
+         
     """
     Helper method to check if string is title
 
@@ -219,18 +233,21 @@ class SparkData:
     ):
         # Date: cast to SQL date
         if case == "date":
-            self.__data = self.__data.withColumn(string_col, col(string_col).cast("date"));
+            self.__data = self.__data.withColumn(
+                string_col, 
+                F.to_date(F.col(string_col), "dd/MM/yyyy")
+            );
         
         # Numeric: cast to int
         elif case == "numeric":
-            self.__data = self.__data.withColumn(string_col, col(string_col).cast("int"));
+            self.__data = self.__data.withColumn(string_col, F.col(string_col).cast("int"));
         
         # Symbol: convert all symbols to 0, then cast to int
         elif case == "symbol":
             self.__data = self.__data.withColumn(
                 string_col, 
-                regexp_replace(
-                    col(string_col),
+                F.regexp_replace(
+                    F.col(string_col),
                     "[^0-9]", "0"
                 ).cast("int")
             );
@@ -295,7 +312,7 @@ class SparkData:
         
         if requested_cols is None:
             requested_cols = frame.columns;
-
+        
         # Create filter query
         filter_query = self.__create_filter_query(
             frame = frame,
@@ -328,11 +345,16 @@ class SparkData:
         filter_passes = [],
         or_and = None
     ):
+        # Ensure uniqueness of filter passes
+        filter_passes = [list(set(filter_pass)) for filter_pass in filter_passes];
+
+        if len(filter_cols) != len(filter_passes):
+            raise ValueError(f"Number of filter columns {filter_cols} len = {len(filter_cols)} and filter passes {filter_passes} len = {len(filter_passes)} must be equal!");
+
         # Convert filter passes to correct case and ensure they exist
 
         # For every column and values to be filtered by
         for index, filter_col in enumerate(filter_cols):
-
             # Convert any integer arguments to string
             filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
 
@@ -346,10 +368,11 @@ class SparkData:
             # Check if any values in filter_passes are missing
             missing_filter_passes = [
                 filter_pass for filter_pass in selected_filter_passes 
-                if frame.filter(col(filter_col) == filter_pass)
-                # Since we are only checking for existence, we can limit to 1 row
-                .limit(1)
-                .count() == 0
+                if not self.__value_exists(
+                    frame = frame, 
+                    col = filter_col, 
+                    value = filter_pass
+                )
             ];
 
             # Raise error if any values are missing
@@ -369,6 +392,23 @@ class SparkData:
         query = f" {or_and} ".join(queries);
         
         return query;
+
+    """
+    Check if a value exists in a column
+
+    @param frame: dataframe, the dataframe to check
+    @param col: str, the column to check
+    @param value: str, the value to check
+
+    @return exists: bool, whether the value exists in the column
+    """
+    def __value_exists(self,
+        frame = None,
+        col = None,
+        value = None
+    ):
+        # Since we are only checking if the value exists, we can limit the count to 1
+        return frame.filter(F.col(col) == value).limit(1).count() > 0;
 
     """
     Group by, pivot and sum over a frame
@@ -418,7 +458,7 @@ class SparkData:
                 filter_cols = filter_cols,
                 filter_passes = filter_passes
             );
-
+        
         # Create a stack expression 
         n_datas = len(cols);
         stack_expr = f"""
@@ -431,6 +471,8 @@ class SparkData:
         # Unpivot frame by stacking data columns
         frame = frame.selectExpr(row, stack_expr);
         
+        breakpoint();
+
         # Group by and pivot frame
         frame = self.__get_grouped_frame(
             frame = frame,
@@ -444,6 +486,35 @@ class SparkData:
         frame = frame.orderBy(frame[last_col].asc());
         
         return frame;
+    
+    """
+    Helper function to find column of first instance of given value
+
+    @param needle: str, the value to search for
+    @param frame: dataframe, the frame to search in
+
+    @return col: str, the column of the first instance of the value
+    """
+    def _get_first_instance_col(self, needle,
+        frame = None
+    ):
+        if frame is None:
+            frame = self.__data;
+
+        for col in self._get_cols():
+            # Convert case of needle to match case of column
+            if col in self.__case_mapping:
+                case = self.__case_mapping[col];
+                needle = self.__convert_case(needle, case);
+            
+            if self.__value_exists(
+                frame = frame,
+                col = col,
+                value = needle
+            ):
+                return col;
+       
+        raise ValueError(f"Value '{needle}' not found in data!");
 
     """
     Get multiple aggregated frames containing one type of data
@@ -453,7 +524,6 @@ class SparkData:
     @param titles: list of str, titles of frames
     @param default_col: str, default column
     """
-
     def _get_batch_agg_frames(self,
         datas = None,
         rows = None,
@@ -525,7 +595,7 @@ class SparkData:
             # Remove authorised prefix from values of data category column
             frame = frame.withColumn(
                 datas_category, 
-                regexp_replace(datas_category, col_prefix, "")
+                F.regexp_replace(datas_category, col_prefix, "")
             ); 
 
             # Assign frame to frames dictionary
@@ -533,17 +603,4 @@ class SparkData:
 
         return frames;
     
-    """
-    Helper function to find column of first instance of given value
-
-    @param needle: str, the value to search for
-
-    @return col: str, the column of the first instance of the value
-    """
-    def _get_first_instance_col(self, needle):
-    ):
-        for col in self._get_cols():
-            if frame.filter(col == needle).limit(1).count() > 0:
-                return col;
-       
-        raise ValueError(f"Value '{needle}' not found in data!");
+    
