@@ -1,31 +1,34 @@
-from spark_csv import SparkCSV
+from spark_data import SparkData
 
 """
 Class representing the absences data specifically
 """
-class Absences(SparkCSV):
+class Absences(SparkData):
+    """
+    Constructor: loads data
+    @param absences_loc: str, the location of the absences data
+    """
     def __init__(self,
         absences_loc = "data/Absence_3term201819_nat_reg_la_sch.csv"
     ):
-        self.default_filter_cols = ["geographic_level"];
-        self.default_filter_passes = ["National"];
-
         super().__init__(absences_loc);
 
     """
-    Helper method to add default filter columns and pass values
+    Helper method to add default filter columns and pass values to arguments
+
+    @param filter_cols: list of str, the columns to filter by
+    @param default_filter_cols: list of str, the default columns to add
+    @param filter_passes: list of str, the values to filter by
+    @param default_filter_passes: list of str, the default values to add
+
+    @return tuple of list of str, list of str, the combined filter columns and passes
     """
     def __add_default_filters(self, 
         filter_cols = None,
-        default_filter_cols = None,
+        default_filter_cols = ["geographic_level"],
         filter_passes = None,
-        default_filter_passes = None
+        default_filter_passes = [["National"]],
     ):         
-        if default_filter_cols is None: 
-            default_filter_cols = self.default_filter_cols;
-
-        if default_filter_passes is None:
-            default_filter_passes = self.default_filter_passes;
 
         filter_cols = filter_cols + default_filter_cols;
         filter_passes = filter_passes + default_filter_passes;
@@ -34,19 +37,28 @@ class Absences(SparkCSV):
 
     """
     Get number of pupil enrolments for a requested local authority for each year
+
+    @param geographic_levels: list of str, the levels of geography to filter by
+    @param filter_cols: list of str, the columns to filter by
+    @param local_authorities: list of str, the local authorities to filter by
+    @param row: str, the column to use as rows
+    @param col: str, the column to use as columns
+    @param data: str, the column to use as data
+
+    @return DataFrame, the number of pupil enrolments for the requested local authorities
     """
-    def get_by_la(self, local_authorities,
-        geographic_level = ["Local authority"]
+    def get_by_la(self,
+        geographic_levels = ["Local authority"],
         filter_cols = ["la_name"],
         local_authorities = [],
         row = "la_name",
-        col = "time_period"
-        data = "enrolments",
+        col = "time_period",
+        data = "enrolments"
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
-            filter_passes = [local_authorities]
-            default_filter_passes = [geographic_level]
+            filter_passes = [local_authorities],
+            default_filter_passes = [geographic_levels]
         );    
 
         # Get enrolment data for the requested local authorities
@@ -62,13 +74,22 @@ class Absences(SparkCSV):
 
     """
     Get authorised absence data for requested school types and years
+
+    @param filter_cols: list of str, the columns to filter by
+    @param school_types: list of str, the school types to filter by
+    @param years: list of str, the years to filter by
+    @param row: str, the column to use as rows
+    @param col: str, the column to use as columns
+    @param sess_prefix: str, the prefix to remove from the column names
+
+    @return DataFrame, the authorised absence data for the requested school types
     """
     def get_by_school_type(self,
         filter_cols = ["school_type", "time_period"],
         school_types = [],
         years = [],
         row = "school_type",
-        col = "sess_authorised"
+        col = "sess_authorised",
         sess_prefix = "sess_"
     ):
         filter_cols, filter_passes = self.__add_default_filters(
@@ -80,18 +101,24 @@ class Absences(SparkCSV):
         frame = self._get_agg_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
-            data = data, 
             row = row,
             col = col
         );
 
-        # Remove the prefix from the column names
-        frame = frame.rename(columns = lambda x: x.replace(sess_prefix, ""));
-    
         return frame;
 
     """
     Get authorised absence data by absence reasons for requested school types and years
+
+    @param filter_cols: list of str, the columns to filter by
+    @param school_types: list of str, the school types to filter by
+    @param years: list of str, the years to filter by
+    @param cols_category: str, the category of columns to use
+    @param absence_reasons: list of str, the columns to use as rows
+    @param row: str, the column to use as rows
+    @param authorised_prefix: str, the prefix to remove from the column names
+
+    @return DataFrame, the authorised absence data by absence reasons for the requested school types
     """
     def get_by_school_type_detailed(self,
         filter_cols = ["school_type", "time_period"],
@@ -116,17 +143,16 @@ class Absences(SparkCSV):
         frame = self._get_multi_col_agg_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
-            cols_category = rows_category,
+            cols_category = cols_category,
             cols = absence_reasons,
             row = row
         );
-        
-        frame = frame.rename(columns = lambda x: x.replace(authorised_prefix, ""));
         
         return frame;
 
     """
     Get all column names which are reasons for absence
+
     @return list of str, the names of the columns which are reasons for absence
     """
     def __get_absence_reasons(self):
@@ -134,8 +160,14 @@ class Absences(SparkCSV):
 
     """
     Helper method to check if column is a reason for absence
+
     @param col: str, the column to check
+    @param prefix: str, the prefix to check for
+
+    @return bool, whether the column is a reason for absence
     """
-    def __is_reason_for_absence(self, col):
-        return col.startswith("sess_auth_");
+    def __is_reason_for_absence(self, col,
+        prefix = "sess_auth_"
+    ):
+        return col.startswith(prefix);
 

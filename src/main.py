@@ -3,21 +3,34 @@ from view import View;
 
 # Instantiate data and view
 # Part 1a and 1b performed in constructor of Data class, initialised by Absences class
+print("Loading data...");
 absences = Absences(); 
+
+print("Loading graphics...");
 view = View();
+
+print("Loading complete!");
 
 # PART 1C
 # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
 # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
 
-def get_by_la():
-    # Ask user for local authorities 
-    local_authorities = view.prompt_user(
-        prompt = "Enter the local authorities you want to analyse", 
-        type = "list"
-    );
+def get_by_la(
+    use_default = True,
+    default_local_authorities = ["Sheffield", "Barnsley", "Rotherham", "Doncaster"]
+):
+    if use_default: 
+        local_authorities = default_local_authorities;
+    else:
+        # Ask user for local authorities 
+        local_authorities = view.prompt_user(
+            prompt = "Enter the local authorities you want to analyse", 
+            type = "list"
+        );
     
-    frame = absences.get_by_la(local_authorities);
+    frame = absences.get_by_la(
+        local_authorities = local_authorities
+    );
 
     view.display_frame(frame);
 
@@ -26,18 +39,27 @@ get_by_la();
 # PART 1D
 # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
 
-def get_by_school_type():
-    # Ask user for school types 
-    school_types = view.prompt_user(
-        prompt = "Enter the school types you want to analyse", 
-        type = "list"
-    );
-        
-    # Ask user for year
-    year = view.prompt_user(
-        prompt = "Enter the year you want to analyse",
-        type = "int"
-    );
+def get_by_school_type(
+    use_default = True,
+    default_school_types = ["State-funded primary", "State-funded secondary", "Special", "Total"],
+    default_year = "201819"
+):
+    if use_default:
+        school_types = default_school_types;
+        year = default_year;
+
+    else:
+        # Ask user for school types 
+        school_types = view.prompt_user(
+            prompt = "Enter the school types you want to analyse", 
+            type = "list"
+        );
+            
+        # Ask user for year
+        year = view.prompt_user(
+            prompt = "Enter the year you want to analyse",
+            type = "int"
+        );
 
     frame = absences.get_by_school_type(
         school_types = school_types,
@@ -51,20 +73,29 @@ get_by_school_type();
 # Part 1D EXTENSION
 # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
 
-def get_by_school_type_detailed(): 
-    # Ask user for school types
-    school_types = view.prompt_user(
-        prompt = "Enter the school types you want to analyse", 
-        type = "list"
-    );
+def get_by_school_type_detailed(
+    use_default = True,
+    default_school_types = ["State-funded primary", "State-funded secondary", "Special", "Total"],
+    default_year = "201819"
+): 
+    if use_default:
+        school_types = default_school_types;
+        year = default_year;
+    
+    else:
+        # Ask user for school types
+        school_types = view.prompt_user(
+            prompt = "Enter the school types you want to analyse", 
+            type = "list"
+        );
 
-    # Ask user for year
-    year = view.prompt_user(
-        prompt = "Enter the year you want to analyse",
-        type = "int"
-    );
+        # Ask user for year
+        year = view.prompt_user(
+            prompt = "Enter the year you want to analyse",
+            type = "int"
+        );
 
-    frame = absences.get_school_type_detailed(
+    frame = absences.get_by_school_type_detailed(
         school_types = school_types,
         years = [year]
     );

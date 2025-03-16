@@ -2,23 +2,27 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, regexp_replace
 
 """
-Class to load and manipulate any csv file with Spark
+Class to load and manipulate data with Spark
 """
-class SparkCSV:
+class SparkData:
     
     """ 
     Constructor: creates a SparkSession, load data and perform preprocessing
 
-    @param csv_loc: str, the location of data to load
+    @param csv_loc: str, the location of csv data to load
     """
     def __init__(self, csv_loc):
+        print("Creating Spark session...");
         self.__create_spark_session();
-
-        self.__load_data(csv_loc);
         
+        print("Loading data...");
+        self.__load_csv(csv_loc);
+        
+        print("Preprocessing data...");
+
         # Get cases of each column
         self.__get_case_mapping();
-
+        
     """
     Create a SparkSession
 
@@ -41,7 +45,7 @@ class SparkCSV:
 
     @param csv_loc: str, the location of data to load
     """
-    def __load_data(self, csv_loc):
+    def __load_csv(self, csv_loc):
         self.__data = ( 
             self.__spark.read
             .option("inferSchema", "true")
@@ -49,6 +53,12 @@ class SparkCSV:
             .csv(csv_loc)
         );
     
+    """
+    Getter of columns of dataframe
+    """
+    def _get_cols(self):
+        return self.__data.columns;
+
     """
     Get inferred case of values in each string column in the data
 
@@ -241,22 +251,23 @@ class SparkCSV:
         filter_passes = [],
         data = None, 
         row = None,
-        col = None
+        col = None,
     ):
-        # Get frame with requested columns
-        requested_cols = [data, row, col];
+        # Get all columns required to complete query
+        requested_cols = [x for x in [row, col, data] if x is not None];
+
         frame = self._get_frame(
             requested_cols = requested_cols,
             filter_cols = filter_cols, 
             filter_passes = filter_passes
         ); 
-
+        
         # Transpose and aggregate to get requested frame 
         frame = self.__get_grouped_frame(
             frame = frame,
-            group_by = [row],
-            pivot = col,
-            sum = data
+            row = [row],
+            col = col,
+            data = data,
         );
 
         return frame;
@@ -361,14 +372,26 @@ class SparkCSV:
 
     """
     Group by, pivot and sum over a frame
+
+    @param frame: dataframe, the dataframe to get the subset from
+    @param col: str, the column to use as the column of each frame
+    @param row: str, the row label to aggregate by
+    @param data: str, the data to aggregate
+    
+    @return frame: dataframe, the aggregated frame
     """
     def __get_grouped_frame(self,
         frame = None,
-        group_by = None,
-        pivot = None,
-        sum = None
+        col = None,
+        row = None,
+        data = None
     ):
-        return frame.groupBy(group_by).pivot(pivot).sum(sum);
+        # If no data provided, assume "col" is data and no pivot requested
+        if data is None:
+            return frame.groupBy(row).sum(col);
+
+        else:
+            return frame.groupBy(row).pivot(col).sum(data);
     
     """
     Get a frame with aggregates of multiple columns 
@@ -421,6 +444,7 @@ class SparkCSV:
         frame = frame.orderBy(frame[last_col].asc());
         
         return frame;
+
     """
     Get multiple aggregated frames containing one type of data
     @param datas: list of str, the datas to aggregate
@@ -508,6 +532,3 @@ class SparkCSV:
             frames[title] = frame;
 
         return frames;
-    
-    
-    
