@@ -24,6 +24,20 @@ class Absences(SparkData):
             self.__totaless_distinct_school_types = [school_type for school_type in self.__all_distinct_school_types if school_type != total_school_type];
 
         self.__absence_reasons = self.__get_absence_reasons();
+
+        # Turn yyyy/yy to yyyy
+        self.__clean_years = self._clean_time_period();
+    
+    """
+    Create dictionary mapping yyyy/yy years to yyyy
+    """
+    def __clean_time_period(self):
+        # Get distinct years
+        years = self.__get_distinct_values("time_period");
+
+        # Create dictionary mapping yyyy/yy to yyyy
+        clean_years = {year: year.split("/")[0] for year in years};
+        return clean_years;
     """
     Helper method to add default filter settings to arguments
 
@@ -99,12 +113,15 @@ class Absences(SparkData):
         local_authorities = [],
         row = "la_name",
         col = "time_period",
-        data = "enrolments"
+        data = "enrolments",
+        col_renames = {
+            "la_name": "Local Authority",
+        }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [local_authorities],
-            default_filter_passes = [geographic_levels, ["Total"]]
+            default_filter_passes = [geographic_levels, ["Total"]],
         );    
 
         # Get enrolment data for the requested local authorities
@@ -115,9 +132,20 @@ class Absences(SparkData):
             row = row,
             col = col
         );
-    
-        return frame;
+        
+        # Add time period mapping to rename columns
+        [col_renames.update(
+            {col: self.__clean_years[col]}
+        ) for col in frame.columns if col in self.__clean_years]; 
 
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+
+        return frame;
+    
+    
     """
     Get authorised absence data for requested school types and years
 

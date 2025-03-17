@@ -85,6 +85,26 @@ class SparkData:
     """
     def _get_distinct_values(self, col):
         return self.__data.select(col).dropna().distinct().collect();
+    
+    """
+    Rename columns in a DataFrame
+
+    @param frame: DataFrame, the DataFrame to rename columns in
+    @param col_renames: dict of str, the columns to rename and their new names
+
+    @return DataFrame, the DataFrame with renamed columns
+    """
+    def _rename_cols(self,
+        frame = None,
+        col_renames = {}
+    ):
+        if frame is None:
+            frame = self.__data
+
+        for col in col_renames:
+            frame = frame.withColumnRenamed(col, col_renames[col]);
+
+        return frame;
 
     """
     Get inferred case of values in each string column in the data based on a sample
