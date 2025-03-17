@@ -57,12 +57,13 @@ class View:
             return self.__prompt_for_int(prompt);
 
     """
-    Display a dataframes to the user
+    Display a Spark dataframe to the user
     @param frame: frameframe to display
     """
     def display_frame(self, frame):
-        frame.show();
-
+        # Show all columns in entirety
+        frame.show(frame.count(), False);
+        
     """
     Display multiple dataframes to the user
     @param frame: dictionary of titles and frameframes to display

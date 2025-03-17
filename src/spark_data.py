@@ -1,5 +1,10 @@
-from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
+import os;
+
+from pyspark.sql import SparkSession;
+
+import pyspark.sql.functions as F;
+
+from pyspark.sql.types import StringType, IntegerType, DoubleType, DateType;
 
 """
 Class to load and manipulate data with Spark
@@ -13,7 +18,9 @@ class SparkData:
     """
     def __init__(self, csv_loc):
         print("Creating Spark session...");
-        self.__create_spark_session();
+        self.__create_spark_session(
+            python_path = None
+        );
         
         print("Loading data...");
         self.__load_csv(csv_loc);
@@ -29,13 +36,19 @@ class SparkData:
     """
     Create a SparkSession
 
-    @param master: str, the master to use
+    @param master: str, the master to use (default is local mode)
     @param app_name: str, the name of the application
+    @param python_path: str, the path to the python executable
     """
     def __create_spark_session(self,
         master = "local[*]",
-        app_name = "school-absences-analysis"
+        app_name = "school-absences-analysis",
+        python_path = None,
     ):
+        if python_path is not None:
+            os.environ["PYSPARK_PYTHON"] = python_path;
+            os.environ["PYSPARK_DRIVER_PYTHON"] = python_path;
+
         self.__spark = (
             SparkSession.builder
             .master(master)
@@ -105,6 +118,75 @@ class SparkData:
             frame = frame.withColumnRenamed(col, col_renames[col]);
 
         return frame;
+    
+    """
+    Transform and replace values in a column
+
+    @param frame: DataFrame, the DataFrame to transform values in
+    @param col: str, the column to transform
+    @param query: str, SQL expression to transform values
+
+    @return DataFrame, the DataFrame with transformed values
+    """
+    def _transform_col(self,
+        frame = None,
+        col = None,
+        query = None,
+        temp_name = "transform_frame"
+    ):
+        if frame is None:
+            frame = self.__data;
+        
+        # Create temporary view of frame
+        frame.createOrReplaceTempView(temp_name);
+
+        # Create statement to select all other columns in frame
+        other_cols = [column for column in frame.columns if column != col];
+        other_cols = "`, `".join(other_cols);
+        other_cols = f"`{other_cols}`";
+
+        # Create SQL expression to transform column
+        query = f"""
+        SELECT 
+            CASE
+                {query}
+            END as `{col}`,
+            {other_cols}
+        FROM {temp_name}
+        """;
+
+        # Execute query 
+        frame = self.__spark.sql(query);
+
+        return frame;
+
+    """
+    Transpose frame
+    
+    @param frame: dataframe, the dataframe to transpose
+
+    @return frame: dataframe, the transposed dataframe
+    """
+    def _transpose_frame(self,
+        frame = None
+    ):
+        if frame is None:
+            frame = self.__data;
+        
+        # Collect dataframe
+        data = frame.collect(); 
+        cols = frame.columns;
+        
+        # Get transposed data
+        transposed_data = [];
+        for col in cols:
+            new_row = [col] + [row[col] for row in data];
+            transposed_data.append(new_row);
+
+        # Create new column names
+        new_header = ["Attribute"] + [row[0] for row in data];
+
+        return self.__spark.createDataFrame(transposed_data, new_header);
 
     """
     Get inferred case of values in each string column in the data based on a sample

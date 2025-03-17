@@ -1,4 +1,5 @@
 from spark_data import SparkData
+    
 
 """
 Class representing the absences data specifically
@@ -26,7 +27,7 @@ class Absences(SparkData):
         self.__absence_reasons = self.__get_absence_reasons();
 
         # Turn yyyy/yy to yyyy
-        self.__clean_years = self._clean_time_period();
+        self.__clean_years = self.__clean_time_period();
     
     """
     Create dictionary mapping yyyy/yy years to yyyy
@@ -35,8 +36,8 @@ class Absences(SparkData):
         # Get distinct years
         years = self.__get_distinct_values("time_period");
 
-        # Create dictionary mapping yyyy/yy to yyyy
-        clean_years = {year: year.split("/")[0] for year in years};
+        # Create dictionary mapping getting first 4 characters of year 
+        clean_years = {str(year): str(year)[0:4] for year in years};
         return clean_years;
     """
     Helper method to add default filter settings to arguments
@@ -134,17 +135,28 @@ class Absences(SparkData):
         );
         
         # Add time period mapping to rename columns
-        [col_renames.update(
-            {col: self.__clean_years[col]}
-        ) for col in frame.columns if col in self.__clean_years]; 
+        col_renames = self.__add_time_period_renames(col_renames); 
 
         frame = self._rename_cols(
             frame = frame,
             col_renames = col_renames
         );
-
+        
         return frame;
     
+    """
+    Add time period mapping to rename columns
+
+    @param col_renames: dict of str, the column names to rename
+
+    @return dict of str, the column names to rename
+    """
+    def __add_time_period_renames(self, col_renames):
+        [col_renames.update(
+            {col: self.__clean_years[col]}
+        ) for col in self.__clean_years]; 
+
+        return col_renames;
     
     """
     Get authorised absence data for requested school types and years
@@ -163,7 +175,10 @@ class Absences(SparkData):
         years = [],
         row = "school_type",
         col = "sess_authorised",
-        sess_prefix = "sess_"
+        col_renames = { 
+            "school_type": "School type",
+            "sum(sess_authorised)": "Authorised absences"
+        }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
@@ -171,12 +186,17 @@ class Absences(SparkData):
             default_filter_passes = [["National"], self.__all_distinct_school_types]
         ); 
 
-        # Get authorised absence data for the school types
+        # Get authorised absence data for the requested school types and year
         frame = self._get_agg_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
             row = row,
             col = col
+        );
+        
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
         );
 
         return frame;
@@ -197,10 +217,13 @@ class Absences(SparkData):
         filter_cols = ["school_type", "time_period"],
         school_types = [],
         years = [],
-        cols_category = "absence_reasons",
+        cols_category = "absence_reason",
         absence_reasons = [],
         row = "school_type",
         authorised_prefix = "sess_auth_",
+        col_renames = {
+            "absence_reason": "Reason for authorised absence"
+        }
     ):
             
         # Get every absence reason 
@@ -222,7 +245,39 @@ class Absences(SparkData):
             row = row
         );
         
+        clean_absence_reason_query = self.__clean_absence_reason();
+        frame = self._transform_col(
+            frame = frame,
+            col = cols_category,
+            query = clean_absence_reason_query
+        );
+
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+
         return frame;
+
+    """
+    Generate an SQL query to clean absence reasons
+    
+    @return str, the SQL query to clean absence reasons
+    """
+    def __clean_absence_reason(self,
+        prefix = "sess_auth_",
+        col_category = "absence_reason"
+    ):
+        return f"""
+            WHEN `{col_category}` = 'sess_auth_ext_holiday' THEN 'Extended holiday'
+            WHEN `{col_category}` = 'sess_auth_totalreasons' THEN 'Total'
+            ELSE
+                initcap(
+                    regexp_replace(
+                        regexp_replace(`{col_category}`, '^{prefix}', ''),
+                    '_', ' ')
+                )
+        """
 
     """
     Get all column names which are reasons for absence
@@ -378,7 +433,7 @@ class Absences(SparkData):
         );
 
         requested_cols = [response] + covariates + [offset]; 
-        breakpoint();
+        
         frame = self._get_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,

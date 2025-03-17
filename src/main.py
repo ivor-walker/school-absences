@@ -40,11 +40,6 @@ def get_enrolment_by_la_over_time(
 
     view.display_frame(frame);
 
-    return frame;
-
-frame = get_enrolment_by_la_over_time();
-breakpoint();
-
 # PART 1D
 # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
 
@@ -75,6 +70,7 @@ def get_auth_by_school_type(
 
     view.display_frame(frame);
 
+
 # Part 1D EXTENSION
 # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
 
@@ -104,6 +100,8 @@ def get_auth_by_school_type_detailed(
     );
 
     view.display_frame(frame);
+
+get_auth_by_school_type_detailed();
 
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
