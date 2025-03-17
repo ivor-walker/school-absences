@@ -22,6 +22,9 @@ class SparkData:
 
         # Get cases of each column
         self.__get_case_mapping();
+
+        # Round all numeric columns to 5 decimal places
+        self.__round_numeric_cols();
         
     """
     Create a SparkSession
@@ -55,21 +58,36 @@ class SparkData:
     
     """
     Getter of columns of dataframe
+
+    @return cols: list of str, the columns of the dataframe
     """
     def _get_cols(self):
         return self.__data.columns;
 
     """
-    Get first n distinct non-NA rows from a column
+    Get first n non-NA rows from a column
+
+    @param n: int, the number of rows to get
+
+    @return values: list of Row, the first n non-NA rows from the column
     """
     def _get_first_values(self,
         n = 5,
     ):
         return self.__data.dropna().limit(n).collect();
+    
+    """
+    Get list of all distinct non_NA values in a column
+
+    @param col: str, the column to get distinct values from
+
+    @return distinct_values: list of Row, the distinct non-NA values in the column
+    """
+    def _get_distinct_values(self, col):
+        return self.__data.select(col).dropna().distinct().collect();
 
     """
     Get inferred case of values in each string column in the data based on a sample
-
 
     @param sample_size: int, the number of values to sample
     @param minor_words: list of str, the minor words to exclude from proper case
@@ -251,6 +269,21 @@ class SparkData:
                     "[^0-9]", "0"
                 ).cast("int")
             );
+
+    """
+    Round all doubles to n decimal places
+
+    @param n: int, the number of decimal places to round to
+    """
+    def __round_numeric_cols(self,
+        n = 5
+    ):
+        for col in self._get_cols():
+            if str(self.__data.schema[col].dataType) == "DoubleType()":
+                self.__data = self.__data.withColumn(
+                    col, 
+                    F.round(F.col(col), n)
+                );
 
     """
     Produce dataframe of aggregates of data, by all values of a single column and row label
@@ -471,8 +504,6 @@ class SparkData:
         # Unpivot frame by stacking data columns
         frame = frame.selectExpr(row, stack_expr);
         
-        breakpoint();
-
         # Group by and pivot frame
         frame = self.__get_grouped_frame(
             frame = frame,

@@ -34,7 +34,41 @@ class Absences(SparkData):
         filter_passes = filter_passes + default_filter_passes;
 
         return filter_cols, filter_passes;
+    
+    """
+    Get dictionary of samples of keys to use as default values
 
+    @param keys: dict of str, the keys to get default values for and the number of values to get
+
+    @return dict of str, the default values for the keys
+    """
+    def get_default_values(self,
+        keys = {
+            "school_type" : 3,
+            "time_period": 1,
+            "la_name" : 10,
+            "region_name" : 3
+        },
+    ):
+        # Create a sample with the size of the smallest value required to satisfy all keys
+        n = max(keys.values());
+        first_values = self._get_first_values(n = n);
+        
+        # Get values of each key in each row
+        rows = [{key: first_value[key] for key in keys} for first_value in first_values];
+
+        # Get inverted dictionary
+        dictionary = {key: [row[key] for row in rows] for key in keys};
+
+        # Limit the number of values to the number requested
+        dictionary = {key: dictionary[key][:keys[key]] for key in keys};
+
+        # Set single level lists to single values
+        for key in keys:
+            if len(dictionary[key]) == 1:
+                dictionary[key] = dictionary[key][0];
+
+        return dictionary;
     """
     Get number of pupil enrolments for a requested local authority for each year
 
@@ -47,7 +81,7 @@ class Absences(SparkData):
 
     @return DataFrame, the number of pupil enrolments for the requested local authorities
     """
-    def get_enrolment_by_la(self,
+    def get_enrolment_by_la_over_time(self,
         geographic_levels = ["Local authority"],
         filter_cols = ["la_name"],
         local_authorities = [],
@@ -252,36 +286,36 @@ class Absences(SparkData):
         return frame;
 
     """
-    Get dictionary of samples of keys to use as default values
-
-    @param keys: dict of str, the keys to get default values for and the number of values to get
-
-    @return dict of str, the default values for the keys
+    Produce data comparing all regions over all time periods
     """
-    def get_default_values(self,
-        keys = {
-            "school_type" : 3,
-            "time_period": 1,
-            "la_name" : 10,
-            "region_name" : 3
-        },
+    def compare_region_attendance_over_time(self,
+        geographic_levels = ["Regional"],
+        filter_cols = ["region_name"],
+        regions = [],
+        row = "region_name",
+        col = "time_period",
+        data = None,
+        authorised_prefix = "sess_"
     ):
-        # Create a sample with the size of the smallest value required to satisfy all keys
-        n = max(keys.values());
-        first_values = self._get_first_values(n = n);
+        if len(regions) == 0:
+            # Get list of rows of regions, and convert to list of strings
+            regions = self._get_distinct_values(row);
+            regions = [region.asDict() for region in regions]; 
+            regions = [region[row] for region in regions];
+
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = [regions],
+            default_filter_passes = [geographic_levels]
+        );
         
-        # Get values of each key in each row
-        rows = [{key: first_value[key] for key in keys} for first_value in first_values];
+        # Get enrolment data for the requested local authorities
+        frame = self._get_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            data = data,
+            row = row,
+            col = col
+        );
 
-        # Get inverted dictionary
-        dictionary = {key: [row[key] for row in rows] for key in keys};
-
-        # Limit the number of values to the number requested
-        dictionary = {key: dictionary[key][:keys[key]] for key in keys};
-
-        # Set single level lists to single values
-        for key in keys:
-            if len(dictionary[key]) == 1:
-                dictionary[key] = dictionary[key][0];
-
-        return dictionary;
+        return frame;

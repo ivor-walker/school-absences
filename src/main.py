@@ -22,7 +22,7 @@ print("Loading complete!");
 # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
 # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
 
-def get_enrolment_by_la(
+def get_enrolment_by_la_over_time(
     use_default = True,
 ):
     if use_default: 
@@ -170,9 +170,6 @@ def compare_la_in_year(
     view.display_frame(frame);
     return frame;
  
-frame = compare_la_in_year();
-breakpoint();
-
 # TODO analyse data
 
 # PART 2B
@@ -181,12 +178,15 @@ breakpoint();
 # – Are there any regions that have worsened?
 # – Which is the overall best/worst region for pupil attendance?
 
-# Get data on regions and attendance
-data = absences.get_data(
-    data = "attendance", 
-    row = "region", 
-    col = "year_breakdown"
-);
+def compare_region_attendance_over_time(
+    data = "sess_overall_percent"
+):
+    frame = absences.compare_region_attendance_over_time(
+        data = data
+    );
+
+    view.display_frame(frame);
+    return frame;
 
 # TODO chart and analyse data
 
