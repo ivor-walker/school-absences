@@ -169,7 +169,7 @@ def compare_la_in_year(
 
     view.display_frame(frame);
     return frame;
- 
+
 # TODO analyse data
 
 # PART 2B
@@ -193,11 +193,20 @@ def compare_region_attendance_over_time(
 # PART 3
 # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
 
-# Get data on school type and location
-data = absences.get_data(
-    data = "sess_overall", 
-    row = "school_type", 
-    col = "region_name"
-);
+def analyse_school_type_location_absences(
+    response = "sess_overall",
+    covariates = ["school_type", "region_name", "academy_type", "academy_open_date", "all_through", "time_period", "sess_unauthorised_percent"],
+    offset = "enrolments"
+):
+    frame = absences.analyse_school_type_location_absences(
+        response = response, 
+        covariates = covariates,
+        offset = offset
+    );
+
+    view.display_frame(frame);
+    return frame;
+
+frame = analyse_school_type_location_absences();
 
 # TODO chart and analyse data

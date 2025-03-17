@@ -5,14 +5,25 @@ Class representing the absences data specifically
 """
 class Absences(SparkData):
     """
-    Constructor: loads data
+    Constructor: loads data and gets initial distinct values
+
     @param absences_loc: str, the location of the absences data
     """
     def __init__(self,
-        absences_loc = "data/Absence_3term201819_nat_reg_la_sch.csv"
+        absences_loc = "data/Absence_3term201819_nat_reg_la_sch.csv",
+        total_school_type = "Total",
     ):
+        # Load the data
         super().__init__(absences_loc);
+        
+        # Get distinct values required for constructing default filters
+        self.__distinct_regions = self.__get_distinct_values("region_name");
+        self.__all_distinct_school_types = self.__get_distinct_values("school_type");
 
+        if total_school_type in self.__all_distinct_school_types:
+            self.__totaless_distinct_school_types = [school_type for school_type in self.__all_distinct_school_types if school_type != total_school_type];
+
+        self.__absence_reasons = self.__get_absence_reasons();
     """
     Helper method to add default filter settings to arguments
 
@@ -25,9 +36,9 @@ class Absences(SparkData):
     """
     def __add_default_filters(self, 
         filter_cols = None,
-        default_filter_cols = ["geographic_level"],
+        default_filter_cols = ["geographic_level", "school_type"],
         filter_passes = None,
-        default_filter_passes = [["National"]],
+        default_filter_passes = [["National"], ["Total"]],
     ):         
 
         filter_cols = filter_cols + default_filter_cols;
@@ -69,6 +80,7 @@ class Absences(SparkData):
                 dictionary[key] = dictionary[key][0];
 
         return dictionary;
+
     """
     Get number of pupil enrolments for a requested local authority for each year
 
@@ -92,7 +104,7 @@ class Absences(SparkData):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [local_authorities],
-            default_filter_passes = [geographic_levels]
+            default_filter_passes = [geographic_levels, ["Total"]]
         );    
 
         # Get enrolment data for the requested local authorities
@@ -127,7 +139,8 @@ class Absences(SparkData):
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
-            filter_passes = [school_types, years] 
+            filter_passes = [school_types, years],
+            default_filter_passes = [["National"], self.__all_distinct_school_types]
         ); 
 
         # Get authorised absence data for the school types
@@ -164,11 +177,12 @@ class Absences(SparkData):
             
         # Get every absence reason 
         if not absence_reasons:
-            absence_reasons = self.__get_absence_reasons();
-       
+            absence_reasons = self.__absence_reasons; 
+
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
-            filter_passes = [school_types, years] 
+            filter_passes = [school_types, years],
+            default_filter_passes = [["National"], self.__all_distinct_school_types]
         );
 
         # Get one frame with absence reasons as rows and school types as columns 
@@ -236,7 +250,7 @@ class Absences(SparkData):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [region_or_la, years],
-            default_filter_passes = [geographic_levels]
+            default_filter_passes = [geographic_levels, ["Total"]]
         );
 
         # Get unauthorised absence data for the requested regions or local authorities
@@ -271,7 +285,7 @@ class Absences(SparkData):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [local_authorities, years],
-            default_filter_passes = [geographic_levels]
+            default_filter_passes = [geographic_levels, ["Total"]]
         );
         
         # Get one frame with important stats as rows and local authorities as columns 
@@ -297,16 +311,14 @@ class Absences(SparkData):
         data = None,
         authorised_prefix = "sess_"
     ):
+        # Get all regions if none are provided
         if len(regions) == 0:
-            # Get list of rows of regions, and convert to list of strings
-            regions = self._get_distinct_values(row);
-            regions = [region.asDict() for region in regions]; 
-            regions = [region[row] for region in regions];
+            regions = self.__distinct_regions;
 
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [regions],
-            default_filter_passes = [geographic_levels]
+            default_filter_passes = [geographic_levels, ["Total"]]
         );
         
         # Get enrolment data for the requested local authorities
@@ -319,3 +331,44 @@ class Absences(SparkData):
         );
 
         return frame;
+    
+    """
+    Produce required data for modelling absences
+    """
+    def analyse_school_type_location_absences(self,
+        geographic_levels = ["School"],
+        filter_cols = [],
+        filter_passes = [],
+        response = None,
+        covariates = None,
+        offset = None
+    ):
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes,
+            default_filter_passes = [geographic_levels, self.__totaless_distinct_school_types]
+        );
+
+        requested_cols = [response] + covariates + [offset]; 
+        breakpoint();
+        frame = self._get_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            requested_cols = requested_cols
+        );
+
+        return frame;
+    
+    """
+    Helper function to get distinct rows and convert into a list of strings
+
+    @param row: str, the column to get distinct values of 
+
+    @return list of str, the distinct values of the column
+    """
+    def __get_distinct_values(self, row):
+        # Get list of rows of regions, and convert to list of strings
+        distincts = self._get_distinct_values(row);
+        distincts = [distinct.asDict() for distinct in distincts]; 
+        return  [distinct[row] for distinct in distincts];
+
