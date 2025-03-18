@@ -87,12 +87,13 @@ class View:
         frame.show(frame.count(), False);
        
     """
-    Display multiple bar charts
+    Display multiple graphs
 
     @param datas: dictionary of data to display 
     @param title: title of figure
     @param n_cols: number of columns in grid of bar charts
     @param colourmap: colour scheme to use
+    @param type: type of plot to display
     @param mean_line_colour: colour of mean line (None to disable)
     @param confidence_intervals_colour: colour of confidence intervals (None to disable)
     @param label_rotation: rotation of x-axis labels
@@ -102,10 +103,11 @@ class View:
     @param hspace: vertical spacing between subplots
     @param wspace: horizontal spacing between subplots
     """
-    def display_bar_charts(self, datas,
+    def display_graphs(self, datas,
         title = "",
         n_cols = 2,
         colourmap = "viridis",
+        type = "bar",
         mean_line_colour = "red", 
         confidence_intervals_colour = "red",
         label_rotation = 10,
@@ -129,10 +131,7 @@ class View:
         fig.suptitle(title, fontsize=20);
         
         # Use requested colour scheme
-        if colourmap == "viridis":
-            colours = cm.viridis(
-                np.linspace(0, 1, len(col_labels))
-            );
+        colours = self.__get_colours(colourmap, len(col_labels)); 
 
         # Create each subplot
         for index, row_label in enumerate(index_labels):
@@ -141,10 +140,13 @@ class View:
             col = index % n_cols;
 
             # Get data to plot
-            data = datas[row_label]
+            data = datas[row_label];
             
-            # Draw bars and title
-            axs[row, col].bar(col_labels, data["data"], color=colours);
+            # Draw bar graph             
+            if type == "bar":
+                axs[row, col].bar(col_labels, data["data"], color=colours);
+        
+            # Set title
             axs[row, col].set_title(row_label);
             
             # Draw a mean line
@@ -153,9 +155,14 @@ class View:
 
             # Draw confidence intervals around the mean
             if mean_line_colour and confidence_intervals_colour:
-                axs[row, col].axhline(data["lower_ci"], color=confidence_intervals_colour, linestyle="--");
-                axs[row, col].axhline(data["upper_ci"], color=confidence_intervals_colour, linestyle="--");
-            
+                axs[row, col].fill_between(
+                    col_labels,
+                    data["lower_ci"],
+                    data["upper_ci"],
+                    color = confidence_intervals_colour,
+                    alpha=0.5
+                ); 
+
             # Disable column labels for all but the bottom row
             if row != n_rows - 1:
                 axs[row, col].set_xticklabels([]);
@@ -171,8 +178,6 @@ class View:
             ax.axis("off");
             ax.set_visible(False);
         
-        plt.tight_layout();
-
         # Avoid column labels being cut off and titles overlapping with plots
         plt.subplots_adjust(
             top = top,
@@ -181,6 +186,74 @@ class View:
             wspace = wspace,
         );
 
+        plt.tight_layout();
+        plt.show();
+
+    """
+    Get a list of colours for a colourmap
+    
+    @param colourmap: colour scheme to use
+    @param n_colours: number of colours to get
+
+    @return list of colours
+    """
+    def __get_colours(self, colourmap, n_colours):
+        return cm.get_cmap(colourmap)(np.linspace(0, 1, n_colours));
+    
+    """
+    Display a single graph
+    """
+    def display_single_graph(self, data, 
+        title = "",
+        type = "line",
+        figsize = (15, 10),
+        colourmap = "viridis",
+        mean_line_colour = "red",
+        confidence_intervals_colour = "red",
+    ):
+        # Extract column and row labels
+        metadata = data["metadata"];
+        col_labels = metadata["col_labels"];
+        index_labels = metadata["index_labels"];
+
+        # Set up figure and title
+        fig, ax = plt.subplots(figsize = figsize);
+        fig.suptitle(title, fontsize=20); 
+        colours = self.__get_colours(colourmap, len(index_labels));
+         
+        # Draw line graph
+        if type == "line":
+
+            # Draw a line for each row 
+            for index, row_label in enumerate(index_labels):
+                ax.plot(
+                    col_labels, 
+                    data[row_label]["data"], 
+                    label = row_label, 
+                    color = colours[index]
+                );
+
+            # Draw a line for the mean
+            if mean_line_colour:
+                ax.plot(
+                    col_labels,
+                    metadata["col_means"],
+                    label = "Mean",
+                    color = mean_line_colour
+                );
+
+            # Draw confidence intervals around the mean
+            if mean_line_colour and confidence_intervals_colour:
+                ax.fill_between(
+                    col_labels,
+                    metadata["col_lower_cis"],
+                    metadata["col_upper_cis"],
+                    color = confidence_intervals_colour,
+                    alpha = 0.5
+                );
+
+        # Add legend and plot
+        ax.legend();
         plt.show();
 
     """

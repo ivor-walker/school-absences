@@ -166,15 +166,12 @@ def compare_la_in_year(
         years = [year],
         cols = cols 
     );
-    
-    return frame, datas;
+        
+    view.display_frame(frame);
+    view.display_graphs(datas,
+        title = "Local authority comparison",
+    );
 
-frame, datas = compare_la_in_year();
-
-view.display_frame(frame);
-view.display_bar_charts(datas,
-    title = "Local authority comparison",
-);
 
 # PART 2B
 # Chart/explore the performance of regions in England from 2006-2018. Your charts and subsequent analysis in your report should answer the following questions:
@@ -183,18 +180,18 @@ view.display_bar_charts(datas,
 # – Which is the overall best/worst region for pupil attendance?
 
 def compare_region_attendance_over_time(
-    data = "sess_overall_percent"
+    data = "sess_overall_percent",
 ):
-    frame = absences.compare_region_attendance_over_time(
+    frame, datas = absences.compare_region_attendance_over_time(
         data = data
     );
+    
+    view.display_frame(frame);
+    view.display_single_graph(datas,
+        title = "Overall absence rate over time, by region",
+    );
 
-    return frame;
-
-frame = compare_region_attendance_over_time();
-view.display_line_chart(frame);
-
-# TODO chart and analyse data
+compare_region_attendance_over_time();
 
 # PART 3
 # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
@@ -202,7 +199,7 @@ view.display_line_chart(frame);
 def analyse_school_type_location_absences(
     response = "sess_overall",
     covariates = ["school_type", "region_name", "academy_type", "academy_open_date", "all_through", "time_period", "sess_unauthorised_percent"],
-    offset = "enrolments"
+    offset = "enrolments",
 ):
     frame = absences.analyse_school_type_location_absences(
         response = response, 
@@ -211,6 +208,5 @@ def analyse_school_type_location_absences(
     );
 
     view.display_frame(frame);
-    return frame;
 
-# TODO chart and analyse data
+    # TODO chart and analyse data

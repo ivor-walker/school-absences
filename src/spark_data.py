@@ -227,11 +227,40 @@ class SparkData:
         # Get column and row labels
         col_labels = frame.columns[1:];
         index_labels = list(datas.keys());
+        
         datas["metadata"] = {
             "col_labels": col_labels,
             "index_labels": index_labels
         };
-        
+
+        # Get means and CIs for all columns
+        if calculate_mean:
+            col_means = [
+                np.mean(
+                    # Get value at position 'index' for each row
+                    [datas[key]["data"][index] for key in index_labels]
+                # Index for each column
+                ) for index in range(len(col_labels))
+            ];
+
+            datas["metadata"]["col_means"] = col_means;
+
+            if calculate_cis:
+                # Get CIs as list of tuples (lower, upper)
+                col_cis = [
+                    self._calculate_confidence_intervals(
+                        [datas[key]["data"][index] for key in index_labels],
+                        mean
+                    ) for index, mean in enumerate(col_means)
+                ];
+                
+                # Get lists of lower and upper CIs
+                lower_cis, upper_cis = zip(*col_cis);
+                lower_cis = list(lower_cis);
+                upper_cis = list(upper_cis);
+
+                datas["metadata"]["col_lower_cis"], datas["metadata"]["col_upper_cis"] = lower_cis, upper_cis;
+
         return datas;
 
     """
