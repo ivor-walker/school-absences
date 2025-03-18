@@ -116,7 +116,7 @@ class Absences(SparkData):
         col = "time_period",
         data = "enrolments",
         col_renames = {
-            "la_name": "Local Authority",
+            "la_name": "Local authority",
         }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
@@ -245,7 +245,15 @@ class Absences(SparkData):
             row = row
         );
         
-        clean_absence_reason_query = self.__clean_absence_reason();
+        clean_absence_reason_query = self.__clean_col(
+            prefix = authorised_prefix,
+            col_category = cols_category,
+            special_cases = {
+                "sess_auth_ext_holiday": "Extended holiday",
+                "sess_auth_totalreasons": "Total"
+            },
+        );
+
         frame = self._transform_col(
             frame = frame,
             col = cols_category,
@@ -260,17 +268,24 @@ class Absences(SparkData):
         return frame;
 
     """
-    Generate an SQL query to clean absence reasons
+    Create an SQL query to clean a column with custom values for special cases and standard cleaning for the rest
+
+    @param prefix: str, the prefix to remove from the column names
+    @param col_category: str, the category of columns to clean
+    @param special_cases: dict of str, the special cases to clean
     
-    @return str, the SQL query to clean absence reasons
+    @return str, the query to clean the column
     """
-    def __clean_absence_reason(self,
-        prefix = "sess_auth_",
-        col_category = "absence_reason"
+    def __clean_col(self,
+        prefix = None,
+        col_category = None,
+        special_cases = {}
     ):
+        special_cases = [f"WHEN `{col_category}` = '{key}' THEN '{value}'" for key, value in special_cases.items()];
+        special_cases = "\n".join(special_cases);
+
         return f"""
-            WHEN `{col_category}` = 'sess_auth_ext_holiday' THEN 'Extended holiday'
-            WHEN `{col_category}` = 'sess_auth_totalreasons' THEN 'Total'
+            {special_cases} 
             ELSE
                 initcap(
                     regexp_replace(
@@ -308,7 +323,10 @@ class Absences(SparkData):
         region_or_la = [],
         years = [],
         col = "sess_unauthorised",
-        sess_prefix = "sess_"
+        sess_prefix = "sess_",
+        col_renames = {
+            "sum(sess_unauthorised)": "Total unauthorised absences"
+        },
     ):
         # Determine whether inputs are regions or local authorities
         cols_of_input = [self._get_first_instance_col(name) for name in region_or_la];
@@ -317,9 +335,11 @@ class Absences(SparkData):
         filter_cols = [];
         if "region_name" in cols_of_input:
             filter_cols.append("region_name");
+            col_renames["region_name"] = "Region";
 
         if "la_name" in cols_of_input:
             filter_cols.append("la_name");
+            col_renames["la_name"] = "Local authority";
 
         if len(filter_cols) == 2:
             raise ValueError("Both region and local authority names were provided. Please provide one or the other.");
@@ -344,6 +364,11 @@ class Absences(SparkData):
             row = row
         );
 
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+
         return frame;
     
     """ 
@@ -363,7 +388,10 @@ class Absences(SparkData):
         cols_category = "important_stats",
         cols = [], 
         row = "la_name",
-        authorised_prefix = "sess_auth_"
+        authorised_prefix = "sess_",
+        col_renames = {
+            "important_stats": "Comparison statistics" 
+        }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
@@ -378,6 +406,26 @@ class Absences(SparkData):
             cols_category = cols_category,
             cols = cols,
             row = row
+        );
+
+        clean_important_stats_query = self.__clean_col(
+            prefix = authorised_prefix,
+            col_category = cols_category,
+            special_cases = {
+                "enrolments_pa_10_exact_percent": "Persistent absentees percent",
+                "sess_overall_percent_pa_10_exact": "Persistent absentee overall absence percent"
+            },
+        );
+
+        frame = self._transform_col(
+            frame = frame,
+            col = cols_category,
+            query = clean_important_stats_query,
+        );
+
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
         );
 
         return frame;

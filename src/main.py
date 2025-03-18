@@ -101,8 +101,6 @@ def get_auth_by_school_type_detailed(
 
     view.display_frame(frame);
 
-get_auth_by_school_type_detailed();
-
 # PART 1E
 # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
 
@@ -136,7 +134,7 @@ def get_unauth_by_la_region(
         region_or_la = region_or_la,
         years = [year]
     );
-
+    
     view.display_frame(frame);
 
 # PART 2A
@@ -144,7 +142,7 @@ def get_unauth_by_la_region(
 
 def compare_la_in_year(
     use_default = True,
-    cols = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "sess_authorised_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "sess_overall_percent_pa_10_exact"],
+    cols = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "enrolments_pa_10_exact_percent", "sess_overall_percent_pa_10_exact"],
 ):
     if use_default:
         local_authorities = defaults["la_name"];
@@ -169,11 +167,10 @@ def compare_la_in_year(
         cols = cols 
     );
 
-    view.display_frame(frame);
     return frame;
 
 frame = compare_la_in_year();
-breakpoint();
+view.display_bar_charts(frame);
 
 # TODO analyse data
 
