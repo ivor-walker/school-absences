@@ -428,7 +428,9 @@ class Absences(SparkData):
             col_renames = col_renames
         );
 
-        return frame;
+        datas = self._collect_frame_to_dict(frame);
+        
+        return frame, datas;
 
     """
     Produce data comparing all regions over all time periods
@@ -460,8 +462,10 @@ class Absences(SparkData):
             row = row,
             col = col
         );
+        
+        datas = self._collect_frame_to_dict(frame);
 
-        return frame;
+        return frame, datas;
     
     """
     Produce required data for modelling absences
@@ -502,4 +506,3 @@ class Absences(SparkData):
         distincts = self._get_distinct_values(row);
         distincts = [distinct.asDict() for distinct in distincts]; 
         return  [distinct[row] for distinct in distincts];
-

@@ -161,18 +161,20 @@ def compare_la_in_year(
             type = "int"
         );
     
-    frame = absences.compare_la_in_year(
+    frame, datas = absences.compare_la_in_year(
         local_authorities = local_authorities,
         years = [year],
         cols = cols 
     );
+    
+    return frame, datas;
 
-    return frame;
+frame, datas = compare_la_in_year();
 
-frame = compare_la_in_year();
-view.display_bar_charts(frame);
-
-# TODO analyse data
+view.display_frame(frame);
+view.display_bar_charts(datas,
+    title = "Local authority comparison",
+);
 
 # PART 2B
 # Chart/explore the performance of regions in England from 2006-2018. Your charts and subsequent analysis in your report should answer the following questions:
@@ -187,8 +189,10 @@ def compare_region_attendance_over_time(
         data = data
     );
 
-    view.display_frame(frame);
     return frame;
+
+frame = compare_region_attendance_over_time();
+view.display_line_chart(frame);
 
 # TODO chart and analyse data
 

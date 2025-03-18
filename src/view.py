@@ -3,7 +3,6 @@ import matplotlib.cm as cm;
 
 import math;
 import numpy as np;
-from scipy.stats import t;
 
 """
 Class for getting input and displaying output to the user
@@ -62,6 +61,22 @@ class View:
         except:
             print("Invalid integer.");
             return self.__prompt_for_int(prompt);
+    
+    """
+    Ask for and recieve a 4 digit year from the user
+    """
+    def __prompt_for_year(self, prompt):
+        # Ask user to input int
+        year = self.__prompt_for_int(prompt);
+
+        # Check year is 4 digits
+        str_year = str(year);
+        if len(str_year) != 4:
+            print("Invalid year.");
+            return self.__prompt_for_year(prompt);
+
+        # Turn YYYY into YYYY/YY
+        
 
     """
     Display a Spark dataframe to the user
@@ -74,17 +89,21 @@ class View:
     """
     Display multiple bar charts
 
-    @param frame: Spark dataframe to display
+    @param datas: dictionary of data to display 
+    @param title: title of figure
     @param n_cols: number of columns in grid of bar charts
     @param colourmap: colour scheme to use
     @param mean_line_colour: colour of mean line (None to disable)
     @param confidence_intervals_colour: colour of confidence intervals (None to disable)
     @param label_rotation: rotation of x-axis labels
     @param figsize: size of figure
+    @param top: top margin of figure
     @param bottom: bottom margin of figure
     @param hspace: vertical spacing between subplots
+    @param wspace: horizontal spacing between subplots
     """
-    def display_bar_charts(self, frame,
+    def display_bar_charts(self, datas,
+        title = "",
         n_cols = 2,
         colourmap = "viridis",
         mean_line_colour = "red", 
@@ -96,27 +115,18 @@ class View:
         hspace = 0.175,
         wspace = 0.08,
     ):
-        data_category = frame.columns[0];
-        
-        # Collect frame and turn into one dictionary
-        datas = [row.asDict() for row in frame.collect()];
-        datas = {
-                # value of first column : value of all other columns
-                row[data_category]: list(row.values())[1:]
-            for row in datas
-        };
-
-        # Get column and row labels
-        col_labels = frame.columns[1:];
-        row_labels = list(datas.keys());
-        len_row_labels = len(row_labels);
+        # Extract column and row labels
+        metadata = datas["metadata"];
+        col_labels = metadata["col_labels"];
+        index_labels = metadata["index_labels"];
+        len_index_labels = len(index_labels);
 
         # Set up subplot grid, figure and title
         n_rows = math.ceil(
-            len_row_labels / n_cols
+            len_index_labels / n_cols
         );
         fig, axs = plt.subplots(n_rows, n_cols, figsize = figsize);
-        fig.suptitle(data_category, fontsize=20);
+        fig.suptitle(title, fontsize=20);
         
         # Use requested colour scheme
         if colourmap == "viridis":
@@ -125,7 +135,7 @@ class View:
             );
 
         # Create each subplot
-        for index, row_label in enumerate(row_labels):
+        for index, row_label in enumerate(index_labels):
             # Get row and column of subplot
             row = index // n_cols;
             col = index % n_cols;
@@ -134,21 +144,17 @@ class View:
             data = datas[row_label]
             
             # Draw bars and title
-            axs[row, col].bar(col_labels, data, color=colours);
+            axs[row, col].bar(col_labels, data["data"], color=colours);
             axs[row, col].set_title(row_label);
             
             # Draw a mean line
             if mean_line_colour:
-                mean = np.mean(data);
-                axs[row, col].axhline(mean, color=mean_line_colour);
+                axs[row, col].axhline(data["mean"], color=mean_line_colour);
 
             # Draw confidence intervals around the mean
             if mean_line_colour and confidence_intervals_colour:
-                # Calculate confidence intervals 
-                lower_bound, upper_bound = self.__calculate_confidence_intervals(mean, data);
-                # Draw confidence intervals
-                axs[row, col].axhline(lower_bound, color=confidence_intervals_colour, linestyle="--");
-                axs[row, col].axhline(upper_bound, color=confidence_intervals_colour, linestyle="--");
+                axs[row, col].axhline(data["lower_ci"], color=confidence_intervals_colour, linestyle="--");
+                axs[row, col].axhline(data["upper_ci"], color=confidence_intervals_colour, linestyle="--");
             
             # Disable column labels for all but the bottom row
             if row != n_rows - 1:
@@ -161,7 +167,7 @@ class View:
                 );
         
         # Hide subplots beyond the number of rows
-        for ax in axs.flat[len_row_labels:]:
+        for ax in axs.flat[len_index_labels:]:
             ax.axis("off");
             ax.set_visible(False);
         
@@ -176,32 +182,6 @@ class View:
         );
 
         plt.show();
-
-    """
-    Calculate the confidence intervals around a given mean
-
-    @param data: list of data to calculate confidence interval around
-    @param alpha: significance level
-
-    @return: tuple of lower and upper bounds of confidence interval
-    """
-    def __calculate_confidence_intervals(self, mean, data,
-        alpha = 0.05
-    ):
-        # Calculate standard error 
-        std_dev = np.std(data);
-        n = len(data);
-        standard_error = std_dev / np.sqrt(n);
-
-        # Get T value
-        degrees_freedom = n - 1;
-        t_value = t.ppf(1 - alpha / 2, degrees_freedom);
-
-        # Calculate confidence intervals
-        lower_bound = mean - t_value * standard_error;
-        upper_bound = mean + t_value * standard_error;
-
-        return lower_bound, upper_bound;
 
     """
     Display multiple dataframes to the user

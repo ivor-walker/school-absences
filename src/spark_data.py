@@ -1,10 +1,11 @@
 import os;
 
 from pyspark.sql import SparkSession;
-
 import pyspark.sql.functions as F;
-
 from pyspark.sql.types import StringType, IntegerType, DoubleType, DateType;
+
+import numpy as np;
+from scipy.stats import t;
 
 """
 Class to load and manipulate data with Spark
@@ -187,8 +188,90 @@ class SparkData:
         new_header = ["Attribute"] + [row[0] for row in data];
 
         return self.__spark.createDataFrame(transposed_data, new_header);
+    
+    """
+    Collect a frame and return a dictionary representation
+
+    @param frame: dataframe, the dataframe to collect
+
+    @return frame_dict: dict, the dictionary representation of the dataframe
+    """
+    def _collect_frame_to_dict(self, frame,
+        calculate_mean = True,
+        calculate_cis = True
+    ):
+        # Assume first column as index
+        data_category = frame.columns[0];
+
+        # Collect frame and turn into one dictionary
+        datas = [row.asDict() for row in frame.collect()];
+        datas = {
+                # value of first column : value of all other columns
+                row[data_category]: {
+                    "data" : list(row.values())[1:]
+                }
+            for row in datas
+        };
+        
+        # Calculate means and confidence intervals
+        if calculate_mean:
+            for key in datas:
+                data = datas[key]["data"];
+                mean = sum(data) / len(data); 
+                
+                datas[key]["mean"] = mean;
+
+                if calculate_cis:
+                    datas[key]["lower_ci"], datas[key]["upper_ci"] = self._calculate_confidence_intervals(data, mean);
+
+        # Get column and row labels
+        col_labels = frame.columns[1:];
+        index_labels = list(datas.keys());
+        datas["metadata"] = {
+            "col_labels": col_labels,
+            "index_labels": index_labels
+        };
+        
+        return datas;
 
     """
+    Calculate the confidence intervals around a given mean
+
+    @param data: list of data to calculate confidence interval around
+    @param alpha: significance level
+
+    @return: tuple of lower and upper bounds of confidence interval
+    """
+    def _calculate_confidence_intervals(self, data,
+        mean = None,
+        alpha = 0.05,
+        n_places = 5,
+    ):
+        # Compute mean if needed 
+        if not mean:
+            mean = np.mean(data);
+
+        # Calculate standard error 
+        std_dev = np.std(data);
+        n = len(data);
+        standard_error = std_dev / np.sqrt(n);
+
+        # Get T value
+        degrees_freedom = n - 1;
+        t_value = t.ppf(1 - alpha / 2, degrees_freedom);
+        
+        
+        # Calculate confidence intervals
+        lower_bound = mean - t_value * standard_error;
+        upper_bound = mean + t_value * standard_error;
+
+        # Round confidence intervals to n decimal places to convert from numpy float to python float
+        lower_bound = round(lower_bound, n_places);
+        upper_bound = round(upper_bound, n_places);
+
+        return lower_bound, upper_bound;
+    
+    """ 
     Get inferred case of values in each string column in the data based on a sample
 
     @param sample_size: int, the number of values to sample
