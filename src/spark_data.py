@@ -198,21 +198,33 @@ class SparkData:
     """
     def _collect_frame_to_dict(self, frame,
         calculate_mean = True,
-        calculate_cis = True
+        calculate_cis = True,
+        invert = False
     ):
         # Assume first column as index
         data_category = frame.columns[0];
 
         # Collect frame and turn into one dictionary
         datas = [row.asDict() for row in frame.collect()];
-        datas = {
+        col_labels = frame.columns[1:];
+        index_labels = [row[data_category] for row in datas];
+
+        if not invert:
+            datas = {
                 # value of first column : value of all other columns
                 row[data_category]: {
                     "data" : list(row.values())[1:]
-                }
-            for row in datas
-        };
-        
+                } for row in datas
+            };
+
+        else: 
+            datas = {
+                # Value of first row (list of columns): value of all other rows
+                col: {
+                    "data": [data[col] for data in datas]
+                } for col in col_labels
+            };       
+
         # Calculate means and confidence intervals
         if calculate_mean:
             for key in datas:
@@ -223,14 +235,13 @@ class SparkData:
 
                 if calculate_cis:
                     datas[key]["lower_ci"], datas[key]["upper_ci"] = self._calculate_confidence_intervals(data, mean);
-
-        # Get column and row labels
-        col_labels = frame.columns[1:];
-        index_labels = list(datas.keys());
         
+        if invert:
+            index_labels, col_labels = col_labels, index_labels;
+
         datas["metadata"] = {
-            "col_labels": col_labels,
-            "index_labels": index_labels
+            "index_labels": index_labels,
+            "col_labels": col_labels
         };
 
         # Get means and CIs for all columns
@@ -346,8 +357,7 @@ class SparkData:
 
             else:
                 self.__case_mapping[string_col] = case;
-
-
+        
     """
     Infer case of a string
 
@@ -458,16 +468,23 @@ class SparkData:
 
     @param string_col: str, the column to convert
     @param case: str, the case to convert the column to
+    @param reference_date: str, the reference date to base date conversions on
+    @param date_format: str, the assumed format of column of dates
     """
     def __convert_str_col(self,
         string_col = None,
-        case = None
+        case = None,
+        reference_date = "2019-01-09",
+        date_format = "dd/MM/yyyy"
     ):
-        # Date: cast to SQL date
+        # Date: cast to int, number of days until reference day
         if case == "date":
             self.__data = self.__data.withColumn(
                 string_col, 
-                F.to_date(F.col(string_col), "dd/MM/yyyy")
+                F.datediff(
+                    F.lit(reference_date), 
+                    F.to_date(F.col(string_col), date_format)
+                )
             );
         
         # Numeric: cast to int
@@ -507,6 +524,8 @@ class SparkData:
     @param data: str, the data to aggregate
     @param row: str, the row label to aggregate by
     @param col: str, the column label to aggregate by
+    @param count: bool, whether to count the data instead of summing it
+    @param normalise: bool, whether to normalise the count
 
     @return frame: dataframe, the aggregated frame
     """
@@ -516,6 +535,8 @@ class SparkData:
         data = None, 
         row = None,
         col = None,
+        count = False,
+        normalise = False
     ):
         # Get all columns required to complete query
         requested_cols = [x for x in [row, col, data] if x is not None];
@@ -532,6 +553,8 @@ class SparkData:
             row = [row],
             col = col,
             data = data,
+            count = count,
+            normalise = normalise
         );
 
         return frame;
@@ -658,27 +681,59 @@ class SparkData:
         return frame.filter(F.col(col) == value).limit(1).count() > 0;
 
     """
-    Group by, pivot and sum over a frame
+    Group by, pivot and aggregate over a frame
 
     @param frame: dataframe, the dataframe to get the subset from
     @param col: str, the column to use as the column of each frame
     @param row: str, the row label to aggregate by
     @param data: str, the data to aggregate
-    
+    @param count: bool, whether to count the data instead of summing it
+    @param normalise: bool, whether to normalise the count
+    @param n_places: int, the number of decimal places to round to
+
     @return frame: dataframe, the aggregated frame
     """
     def __get_grouped_frame(self,
         frame = None,
         col = None,
         row = None,
-        data = None
+        data = None,
+        count = None,
+        normalise = None,
+        n_places = 5,
     ):
-        # If no data provided, assume "col" is data and no pivot requested
-        if data is None:
-            return frame.groupBy(row).sum(col);
+        frame = frame.groupBy(row);
 
+        # If count is requested, return count of data
+        if count:
+            frame = frame.pivot(col).count();
+
+            if not normalise:
+                return frame;
+            
+            # Create totals column with total counts of each row
+            agg_cols = [col for col in frame.columns if col not in row];
+            total_expr = sum(F.col(agg_col) for agg_col in agg_cols);
+            frame = frame.withColumn("total", total_expr);
+            
+            # Normalise data by dividing by total
+            for agg_col in agg_cols:
+                frame = frame.withColumn(
+                    agg_col, 
+                    F.col(agg_col) * 100 / F.col("total")
+                );
+
+            # Drop total column
+            frame = frame.drop("total");
+            
+            return frame;
+    
+        # If no data provided, assume "col" is data and no pivot requested
+        elif data is None:
+            return frame.agg(F.mean(col));
+        # Else, pivot data and aggregate
         else:
-            return frame.groupBy(row).pivot(col).sum(data);
+            return frame.pivot(col).agg(F.mean(data));
     
     """
     Get a frame with aggregates of multiple columns 

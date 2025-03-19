@@ -132,7 +132,7 @@ class View:
         
         # Use requested colour scheme
         colours = self.__get_colours(colourmap, len(col_labels)); 
-
+        
         # Create each subplot
         for index, row_label in enumerate(index_labels):
             # Get row and column of subplot
@@ -178,6 +178,8 @@ class View:
             ax.axis("off");
             ax.set_visible(False);
         
+        plt.tight_layout();
+
         # Avoid column labels being cut off and titles overlapping with plots
         plt.subplots_adjust(
             top = top,
@@ -186,7 +188,6 @@ class View:
             wspace = wspace,
         );
 
-        plt.tight_layout();
         plt.show();
 
     """
@@ -210,6 +211,7 @@ class View:
         colourmap = "viridis",
         mean_line_colour = "red",
         confidence_intervals_colour = "red",
+        label_rotation = 10,
     ):
         # Extract column and row labels
         metadata = data["metadata"];
@@ -221,9 +223,8 @@ class View:
         fig.suptitle(title, fontsize=20); 
         colours = self.__get_colours(colourmap, len(index_labels));
          
-        # Draw line graph
+        # Draw 2d line graph
         if type == "line":
-
             # Draw a line for each row 
             for index, row_label in enumerate(index_labels):
                 ax.plot(
@@ -242,7 +243,6 @@ class View:
                     color = mean_line_colour
                 );
 
-            # Draw confidence intervals around the mean
             if mean_line_colour and confidence_intervals_colour:
                 ax.fill_between(
                     col_labels,
@@ -252,8 +252,39 @@ class View:
                     alpha = 0.5
                 );
 
-        # Add legend and plot
+
+        # Draw 1d bar graph
+        elif type == "bar":
+            # Draw a bar for each row
+            for index, row_label in enumerate(index_labels):
+                ax.bar(
+                    row_label,
+                    data[row_label]["data"],
+                    label = row_label,
+                    color = colours[index]
+                );
+            
+            # Draw a horizontal line for the mean
+            if mean_line_colour:
+                ax.axhline(
+                    metadata["col_means"],
+                    label = "Mean",
+                    color = mean_line_colour
+                ); 
+            
+            # Shade confidence intervals around the mean line
+            if mean_line_colour and confidence_intervals_colour:
+                ax.axhspan(
+                    metadata["col_lower_cis"][0],
+                    metadata["col_upper_cis"][0],
+                    color = confidence_intervals_colour,
+                    alpha = 0.5
+                );
+
+        # Add legend and rotate labels
         ax.legend();
+        ax.set_xticklabels(index_labels, rotation=label_rotation, ha="right");
+        
         plt.show();
 
     """

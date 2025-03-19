@@ -191,22 +191,31 @@ def compare_region_attendance_over_time(
         title = "Overall absence rate over time, by region",
     );
 
-compare_region_attendance_over_time();
-
 # PART 3
 # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
 
-def analyse_school_type_location_absences(
-    response = "sess_overall",
-    covariates = ["school_type", "region_name", "academy_type", "academy_open_date", "all_through", "time_period", "sess_unauthorised_percent"],
-    offset = "enrolments",
-):
-    frame = absences.analyse_school_type_location_absences(
-        response = response, 
-        covariates = covariates,
-        offset = offset
+def analyse_school_type_location_absences():
+    school_type_absences_frame, school_type_absences_datas = absences.get_school_type_absences();
+    view.display_frame(school_type_absences_frame);
+    view.display_single_graph(school_type_absences_datas,
+        title = "Absences by school type",
+        type = "bar"
+    );
+    
+    absences_region_frame, absences_region_datas = absences.get_absences_region();
+    view.display_frame(absences_region_frame);
+    view.display_single_graph(absences_region_datas,
+        title = "Absences by region",
+        type = "bar"
     );
 
-    view.display_frame(frame);
+    region_school_type_frame, region_school_type_datas = absences.get_region_school_type();
+    view.display_frame(region_school_type_frame);
+    view.display_graphs(region_school_type_datas,
+        title = "School types by region",
+    );
 
-    # TODO chart and analyse data
+    model = absences.model_absences();
+    
+
+analyse_school_type_location_absences();

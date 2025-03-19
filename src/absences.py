@@ -1,5 +1,14 @@
-from spark_data import SparkData
-    
+from spark_data import SparkData;
+
+from pyspark.ml import Pipeline;
+from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorSlicer;
+from pyspark.sql.functions import log;
+import pyspark.sql.functions as F;
+
+import numpy as np;
+from pyspark.ml.stat import Correlation;
+
+from pyspark.ml.regression import GeneralizedLinearRegression;
 
 """
 Class representing the absences data specifically
@@ -28,7 +37,7 @@ class Absences(SparkData):
 
         # Turn yyyy/yy to yyyy
         self.__clean_years = self.__clean_time_period();
-    
+        
     """
     Create dictionary mapping yyyy/yy years to yyyy
     """
@@ -39,6 +48,20 @@ class Absences(SparkData):
         # Create dictionary mapping getting first 4 characters of year 
         clean_years = {str(year): str(year)[0:4] for year in years};
         return clean_years;
+    
+    """
+    Helper function to get distinct rows and convert into a list of strings
+
+    @param row: str, the column to get distinct values of 
+
+    @return list of str, the distinct values of the column
+    """
+    def __get_distinct_values(self, row):
+        # Get list of rows of regions, and convert to list of strings
+        distincts = self._get_distinct_values(row);
+        distincts = [distinct.asDict() for distinct in distincts]; 
+        return  [distinct[row] for distinct in distincts];
+
     """
     Helper method to add default filter settings to arguments
 
@@ -170,20 +193,20 @@ class Absences(SparkData):
     @return DataFrame, the authorised absence data for the requested school types
     """
     def get_auth_by_school_type(self,
-        filter_cols = ["school_type", "time_period"],
+        filter_cols = ["time_period"],
         school_types = [],
         years = [],
         row = "school_type",
         col = "sess_authorised",
         col_renames = { 
             "school_type": "School type",
-            "sum(sess_authorised)": "Authorised absences"
+            "avg(sess_authorised)": "Authorised absences"
         }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
-            filter_passes = [school_types, years],
-            default_filter_passes = [["National"], self.__all_distinct_school_types]
+            filter_passes = [years],
+            default_filter_passes = [["National"], school_types]
         ); 
 
         # Get authorised absence data for the requested school types and year
@@ -214,7 +237,7 @@ class Absences(SparkData):
     @return DataFrame, the authorised absence data by absence reasons for the requested school types
     """
     def get_auth_by_school_type_detailed(self,
-        filter_cols = ["school_type", "time_period"],
+        filter_cols = ["time_period"],
         school_types = [],
         years = [],
         cols_category = "absence_reason",
@@ -232,8 +255,8 @@ class Absences(SparkData):
 
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
-            filter_passes = [school_types, years],
-            default_filter_passes = [["National"], self.__all_distinct_school_types]
+            filter_passes = [years],
+            default_filter_passes = [["National"], school_types]
         );
 
         # Get one frame with absence reasons as rows and school types as columns 
@@ -266,7 +289,8 @@ class Absences(SparkData):
         );
 
         return frame;
-
+    
+    # TODO automatically pass this SQL to the _transform_col method
     """
     Create an SQL query to clean a column with custom values for special cases and standard cleaning for the rest
 
@@ -325,7 +349,7 @@ class Absences(SparkData):
         col = "sess_unauthorised",
         sess_prefix = "sess_",
         col_renames = {
-            "sum(sess_unauthorised)": "Total unauthorised absences"
+            "avg(sess_unauthorised)": "Total unauthorised absences"
         },
     ):
         # Determine whether inputs are regions or local authorities
@@ -468,41 +492,251 @@ class Absences(SparkData):
         return frame, datas;
     
     """
-    Produce required data for modelling absences
+    Produce a model of absences
     """
-    def analyse_school_type_location_absences(self,
+    def model_absences(self,
         geographic_levels = ["School"],
         filter_cols = [],
         filter_passes = [],
-        response = None,
-        covariates = None,
-        offset = None
+        response = "sess_overall",
+        offset = "sess_possible",
+        use_offset = False,
+        factor_covariates = ["time_period", "region_name", "school_type", "academy_type"],
+        numeric_covariates = ["academy_open_date", "enrolments", "sess_unauthorised_percent", "sess_overall_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "enrolments_pa_10_exact_percent"],
+        print_high_collinearity = True,
     ):
+        # Get school-level data
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = filter_passes,
             default_filter_passes = [geographic_levels, self.__totaless_distinct_school_types]
         );
 
-        requested_cols = [response] + covariates + [offset]; 
+        requested_cols = [response] + factor_covariates + numeric_covariates + [offset];
         
         frame = self._get_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
             requested_cols = requested_cols
         );
+        
+                
+        # Apply pipeline to frame
+        pipeline = self.__create_absence_modelling_pipeline(
+            factor_covariates = factor_covariates,
+            numeric_covariates = numeric_covariates
+        );
+        model_frame = pipeline.fit(frame).transform(frame);
+        
+        if print_high_collinearity:
+            self.__print_high_collinearity(model_frame);
+        
+        
+        # Fit Poisson GLM
+        if use_offset:
+        
+            # Create column of log of offset
+            model_frame = model_frame.withColumn(f"log_{offset}", log(offset));
+            glm = GeneralizedLinearRegression(
+                family = "poisson",
+                link = "log",
+                featuresCol = "features",
+                labelCol = response,
+                offsetCol = f"log_{offset}"
+            );
 
-        return frame;
+        else:
+            glm = GeneralizedLinearRegression(
+                family = "poisson",
+                link = "log",
+                featuresCol = "features",
+                labelCol = response
+            );
+
+        model = glm.fit(model_frame);
+        
+        return model;
+
+    """
+    Create a pipeline for transforming data in preparation for modelling absences
+    """
+    def __create_absence_modelling_pipeline(self,
+        factor_covariates = [],
+        numeric_covariates = [],
+    ):
+        
+        # Process factor covariates via indexing and creating dummy variables
+        indexers = [StringIndexer(
+            inputCol = covariate, 
+            outputCol = f"{covariate}_index", 
+            handleInvalid = "keep",
+        ) for covariate in factor_covariates];
+        encoders = [OneHotEncoder(inputCol = f"{covariate}_index", outputCol = f"{covariate}_vec", dropLast = True) for covariate in factor_covariates];
+
+        # Bug in pyspark means school_type is having the wrong levels dropped. Only select first two levels
+        slicer = VectorSlicer(inputCol = "school_type_vec", outputCol = "school_type_vec_sliced", indices = [2]);
+        
+        # Assemble all features
+        assembler_inputs = [f"{covariate}_vec" for covariate in factor_covariates if covariate != "school_type"] + numeric_covariates;       
+        assembler_inputs.append("school_type_vec_sliced");
+
+        assembler = VectorAssembler(inputCols = assembler_inputs, outputCol = "features");
+
+        # Create pipeline
+        pipeline = Pipeline(stages = indexers + encoders + [slicer, assembler]);
+        
+        return pipeline;
+
+    """
+    Print out any features which have high collinearity
+    """
+    def __print_high_collinearity(self, frame,
+        threshold = 0.9,
+        idx_sort = False,
+    ):
+        # Get correlation matrix
+        correlation = Correlation.corr(frame, "features");
+        corr_matrix = correlation.collect()[0][0];
+
+        # Convert to np array and find rows and cols with high collinearity
+        corr_matrix = np.array(corr_matrix.toArray());
+
+        # Mask is if the correlation is above the threshold or is NaN
+        mask = (np.abs(corr_matrix) > threshold) | np.isnan(corr_matrix);
+
+        # Remove diagonal and apply mask
+        np.fill_diagonal(mask, False);
+        rows, cols = np.where(mask);
+        
+        # Get features
+        features = frame.schema["features"].metadata["ml_attr"]["attrs"];
+        features = features["binary"] + features["numeric"];
+
+        # Sort features by index
+        if idx_sort:
+            features.sort(key = lambda feature: feature["idx"]);
+
+        # Get feature names
+        feature_names = [feature["name"] for feature in features];
+        
+
+        # Get indices and names of features with high collinearity
+        for i, j in zip(rows, cols):
+            print(f"Features '{feature_names[i]}' ({i}) and '{feature_names[j]}' ({j}) have high collinearity: {corr_matrix[i, j]}");
+
+        if len(rows) == 0:
+            print("No features have high collinearity.");
+
+    """ 
+    Get data on absences by school type
+    """
+    def get_school_type_absences(self,
+        school_types = [],
+        filter_cols = [],
+        filter_passes = [],
+        row = "school_type",
+        col = "sess_overall_percent",
+        col_renames = {
+            "avg(sess_overall_percent)": "Average overall absence percent per year",
+            "school_type": "School type"
+        }
+    ):
+        if not school_types:
+            school_types = self.__all_distinct_school_types;
+
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes,
+            default_filter_passes = [["National"], school_types]
+        );
+        
+        frame = self._get_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            row = row,
+            col = col
+        );
+
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+        
+        datas = self._collect_frame_to_dict(frame);
+
+        return frame, datas;
+
+    def get_absences_region(self,
+        geographic_levels = ["Regional"],
+        filter_cols = [],
+        filter_passes = [],
+        row = "region_name",
+        col = "sess_overall_percent",
+        col_renames = {
+            "avg(sess_overall_percent)": "Average overall absence percentage per year",
+            "region_name": "Region"
+        }
+    ):
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes,
+            default_filter_passes = [geographic_levels, ["Total"]]
+        );
+        
+        frame = self._get_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            row = row,
+            col = col
+        );
+
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+        
+        datas = self._collect_frame_to_dict(frame);
+
+        return frame, datas;
     
-    """
-    Helper function to get distinct rows and convert into a list of strings
+    def get_region_school_type(self,
+        geographic_levels = ["School"],
+        school_types = [],
+        filter_cols = [],
+        filter_passes = [],
+        row = "region_name",
+        col = "school_type",
+        col_renames = {
+            "school_type": "School type",
+            "region_name": "Region",
+        }
+    ):
+        if school_types == []:
+            school_types = self.__all_distinct_school_types;
 
-    @param row: str, the column to get distinct values of 
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes,
+            default_filter_passes = [geographic_levels, school_types]
+        );
+        
+        frame = self._get_agg_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            row = row,
+            col = col,
+            count = True,
+            normalise = True,
+        );
 
-    @return list of str, the distinct values of the column
-    """
-    def __get_distinct_values(self, row):
-        # Get list of rows of regions, and convert to list of strings
-        distincts = self._get_distinct_values(row);
-        distincts = [distinct.asDict() for distinct in distincts]; 
-        return  [distinct[row] for distinct in distincts];
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
+        );
+        
+        datas = self._collect_frame_to_dict(frame,
+            invert = True
+        );
+
+        return frame, datas;
+
