@@ -4,7 +4,7 @@ from view import View;
 import random;
 
 """
-Class to handle the menu for the user to yeareract with the data
+Class to handle the menu for the user to interact with the data
 """
 class Menu:
     def __init__(self):
@@ -263,7 +263,9 @@ class Menu:
         self.__view.display_frame(school_type_absences_frame);
         self.__view.display_single_graph(school_type_absences_datas,
             title = "Rates of overall absence, by school type",
-            type = "bar"
+            type = "bar",
+            # Force confidence intervals to appear
+            num_cols_for_cis = 0,
         );
         
         # Get data and display absences by region
@@ -271,7 +273,8 @@ class Menu:
         self.__view.display_frame(absences_region_frame);
         self.__view.display_single_graph(absences_region_datas,
             title = "Rates of overall absence, by region",
-            type = "bar"
+            type = "bar",
+            num_cols_for_cis = 0,
         );
     
         # Get data and display school types by region

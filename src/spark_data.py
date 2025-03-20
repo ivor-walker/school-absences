@@ -623,13 +623,10 @@ class SparkData:
         filter_passes = [],
         or_and = None
     ):
-        # Ensure uniqueness of filter passes
+        # Convert filter passes to correct case and ensure they exist
         filter_passes = [list(set(filter_pass)) for filter_pass in filter_passes];
-
         if len(filter_cols) != len(filter_passes):
             raise ValueError(f"Number of filter columns {filter_cols} len = {len(filter_cols)} and filter passes {filter_passes} len = {len(filter_passes)} must be equal!");
-
-        # Convert filter passes to correct case and ensure they exist
 
         # For every column and values to be filtered by
         for index, filter_col in enumerate(filter_cols):
@@ -920,5 +917,3 @@ class SparkData:
             frames[title] = frame;
 
         return frames;
-    
-    

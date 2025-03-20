@@ -42,14 +42,18 @@ class Absences(SparkData):
         self.__clean_years = self.__clean_time_period();
         
     """
-    Create dictionary mapping yyyy/yy years to yyyy
+    Create dictionary mapping yyyyyy to yyyy/yy
     """
     def __clean_time_period(self):
-        # Get distinct years
+        # Get distinct years as strings
         years = self.__get_distinct_values("time_period");
+        years = [str(year) for year in years];
 
-        # Create dictionary mapping getting first 4 characters of year 
-        clean_years = {str(year): str(year)[0:4] for year in years};
+        # Create dictionary mapping inserting a '/' after the 4th character 
+        clean_years = {
+            year: f"{year[:4]}/{year[4:]}" 
+        for year in years};
+
         return clean_years;
     
     """
@@ -491,6 +495,8 @@ class Absences(SparkData):
             row = row,
             col = col
         );
+
+        col_renames = self.__add_time_period_renames(col_renames); 
 
         frame = self._rename_cols(
             frame = frame,

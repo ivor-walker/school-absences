@@ -145,6 +145,7 @@ class View:
         type = "bar",
         mean_line_colour = "red", 
         confidence_intervals_colour = "red",
+        num_cols_for_cis = 5,
         label_rotation = 15,
         figsize = (15, 20),
         top = 0.93,
@@ -157,6 +158,10 @@ class View:
         col_labels = metadata["col_labels"];
         index_labels = metadata["index_labels"];
         len_index_labels = len(index_labels);
+        
+        # Hide confidence intervals if not enough columns are being compared
+        if len(col_labels) < num_cols_for_cis:
+            confidence_intervals_colour = None;
 
         # Set up subplot grid, figure and title
         n_rows = math.ceil(
@@ -190,8 +195,7 @@ class View:
 
             # Draw confidence intervals around the mean
             if mean_line_colour and confidence_intervals_colour:
-                axs[row, col].fill_between(
-                    col_labels,
+                axs[row, col].axhspan(
                     data["lower_ci"],
                     data["upper_ci"],
                     color = confidence_intervals_colour,
@@ -246,6 +250,7 @@ class View:
         colourmap = "viridis",
         mean_line_colour = "red",
         confidence_intervals_colour = "red",
+        num_cols_for_cis = 5,
         label_rotation = 15,
     ):
         # Extract column and row labels
@@ -257,6 +262,10 @@ class View:
         fig, ax = plt.subplots(figsize = figsize);
         fig.suptitle(title, fontsize=20); 
         colours = self.__get_colours(colourmap, len(index_labels));
+        
+        # Enable confidence intervals only if enough columns or rows are being compared
+        if len(col_labels) < num_cols_for_cis and len(row_labels) < num_cols_for_cis:
+            confidence_intervals_colour = None;
             
         # Draw 2d line graph
         if type == "line":
