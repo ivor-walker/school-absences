@@ -18,16 +18,15 @@ class SparkData:
     @param csv_loc: str, the location of csv data to load
     """
     def __init__(self, csv_loc):
-        print("Creating Spark session...");
-        self.__create_spark_session(
-            python_path = None
-        );
+        # Create SparkSession
+        self.__create_spark_session();
         
-        print("Loading data...");
+        # Suppress logging
+        self.__spark.sparkContext.setLogLevel("ERROR");
+
+        # Load data as csv
         self.__load_csv(csv_loc);
         
-        print("Preprocessing data...");
-
         # Get cases of each column
         self.__get_case_mapping();
 
@@ -54,6 +53,8 @@ class SparkData:
             SparkSession.builder
             .master(master)
             .appName(app_name)
+            # Suppress console progress bar
+            .config("spark.ui.showConsoleProgress", "false")
             .getOrCreate()
         );
 

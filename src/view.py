@@ -10,6 +10,23 @@ Class for getting input and displaying output to the user
 
 class View:
     """
+    Print a line of text
+
+    @param text: str, the text to print
+    """
+    def display_line(self, text):
+        print(text);
+    
+    """
+    Print a menu of options to the user
+
+    @param options: dictionary of options to display
+    """
+    def display_menu(self, options):
+        for key, value in options.items():
+            print(f"{key}: {value}");
+
+    """
     Prompt the user for input
     @param prompt: str, the prompt to display to the user
     @param type: str, the type of input to get from the user
@@ -24,6 +41,12 @@ class View:
 
         elif type == "int":
             return self.__prompt_for_int(prompt);
+
+        elif type == "year":
+            return self.__prompt_for_year(prompt);
+
+        elif type == "str":
+            return input(prompt);
 
     """
     Ask for and recieve list input from the user
@@ -65,18 +88,21 @@ class View:
     """
     Ask for and recieve a 4 digit year from the user
     """
-    def __prompt_for_year(self, prompt):
+    def __prompt_for_year(self, prompt,
+        split_char = "/",
+        year_length = 7,
+    ):
+        prompt = f"{prompt} (yyyy{split_char}yy, e.g 2007{split_char}08)";
         # Ask user to input int
         year = self.__prompt_for_int(prompt);
 
-        # Check year is 4 digits
+        # Check year is n digits
         str_year = str(year);
-        if len(str_year) != 4:
+        if len(str_year) != year_length:
             print("Invalid year.");
             return self.__prompt_for_year(prompt);
 
-        # Turn YYYY into YYYY/YY
-        
+        return str_year.replace("/", ""); 
 
     """
     Display a Spark dataframe to the user
