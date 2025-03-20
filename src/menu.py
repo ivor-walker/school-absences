@@ -17,7 +17,6 @@ class Menu:
         
         # Set default user inputs
         self.__defaults = self.__absences.get_default_values();
-        print(self.__defaults); 
         
         # Start the menu loop
         self.__view.display_line("Loading complete!");
