@@ -280,7 +280,6 @@ class Menu:
         self.__view.display_frame(region_school_type_frame);
         self.__view.display_graphs(region_school_type_datas,
             title = "Proportion of school types, by region",
-            rota
         );
     
     def __model_school_type_location_absences(self,

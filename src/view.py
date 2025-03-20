@@ -1,14 +1,23 @@
 import matplotlib.pyplot as plt;
 import matplotlib.cm as cm;
 
+import warnings;
+
 import math;
 import numpy as np;
 
 """
 Class for getting input and displaying output to the user
 """
-
 class View:
+
+    """
+    Constructor: suppress all warnings
+    """
+    def __init__(self):
+        # Suppress all warnings across all modules
+        warnings.filterwarnings("ignore");
+
     """
     Print a line of text
 
