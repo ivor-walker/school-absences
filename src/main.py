@@ -194,28 +194,47 @@ def compare_region_attendance_over_time(
 # PART 3
 # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
 
-def analyse_school_type_location_absences():
+def eda_school_type_location_absences():
     school_type_absences_frame, school_type_absences_datas = absences.get_school_type_absences();
     view.display_frame(school_type_absences_frame);
     view.display_single_graph(school_type_absences_datas,
-        title = "Absences by school type",
+        title = "Rates of overall absence, by school type",
         type = "bar"
     );
     
     absences_region_frame, absences_region_datas = absences.get_absences_region();
     view.display_frame(absences_region_frame);
     view.display_single_graph(absences_region_datas,
-        title = "Absences by region",
+        title = "Rates of overall absence, by region",
         type = "bar"
     );
 
     region_school_type_frame, region_school_type_datas = absences.get_region_school_type();
     view.display_frame(region_school_type_frame);
     view.display_graphs(region_school_type_datas,
-        title = "School types by region",
+        title = "Proportion of school types, by region",
     );
 
-    model = absences.model_absences();
+def model_school_type_location_absences(
+    print_results = False,
+):
+    frame = absences.get_model_data();
+    feature_names = absences.get_feature_names(frame);
+
+    model = absences.model_absences(frame = frame);
+    
+    coefficients = absences.scale_coefficients(model.coefficients);
+    lower, upper = absences.get_model_confidence_intervals(model, coefficients);
+
+    if print_results:
+        print(feature_names);
+        print(model.summary);
+        [print({
+            "feature": feature_names[i],
+            "coefficient": coefficients[i],
+            "lower": lower[i],
+            "upper": upper[i]
+        }) for i in range(len(feature_names))];
     
 
-analyse_school_type_location_absences();
+model_school_type_location_absences();

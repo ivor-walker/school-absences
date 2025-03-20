@@ -1,7 +1,8 @@
 from spark_data import SparkData;
 
+from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorSlicer, Interaction;
 from pyspark.ml import Pipeline;
-from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorSlicer;
+
 from pyspark.sql.functions import log;
 import pyspark.sql.functions as F;
 
@@ -9,6 +10,8 @@ import numpy as np;
 from pyspark.ml.stat import Correlation;
 
 from pyspark.ml.regression import GeneralizedLinearRegression;
+
+import math;
 
 """
 Class representing the absences data specifically
@@ -491,142 +494,6 @@ class Absences(SparkData):
 
         return frame, datas;
     
-    """
-    Produce a model of absences
-    """
-    def model_absences(self,
-        geographic_levels = ["School"],
-        filter_cols = [],
-        filter_passes = [],
-        response = "sess_overall",
-        offset = "sess_possible",
-        use_offset = False,
-        factor_covariates = ["time_period", "region_name", "school_type", "academy_type"],
-        numeric_covariates = ["academy_open_date", "enrolments", "sess_unauthorised_percent", "sess_overall_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "enrolments_pa_10_exact_percent"],
-        print_high_collinearity = True,
-    ):
-        # Get school-level data
-        filter_cols, filter_passes = self.__add_default_filters(
-            filter_cols = filter_cols, 
-            filter_passes = filter_passes,
-            default_filter_passes = [geographic_levels, self.__totaless_distinct_school_types]
-        );
-
-        requested_cols = [response] + factor_covariates + numeric_covariates + [offset];
-        
-        frame = self._get_frame(
-            filter_cols = filter_cols,
-            filter_passes = filter_passes,
-            requested_cols = requested_cols
-        );
-        
-                
-        # Apply pipeline to frame
-        pipeline = self.__create_absence_modelling_pipeline(
-            factor_covariates = factor_covariates,
-            numeric_covariates = numeric_covariates
-        );
-        model_frame = pipeline.fit(frame).transform(frame);
-        
-        if print_high_collinearity:
-            self.__print_high_collinearity(model_frame);
-        
-        
-        # Fit Poisson GLM
-        if use_offset:
-        
-            # Create column of log of offset
-            model_frame = model_frame.withColumn(f"log_{offset}", log(offset));
-            glm = GeneralizedLinearRegression(
-                family = "poisson",
-                link = "log",
-                featuresCol = "features",
-                labelCol = response,
-                offsetCol = f"log_{offset}"
-            );
-
-        else:
-            glm = GeneralizedLinearRegression(
-                family = "poisson",
-                link = "log",
-                featuresCol = "features",
-                labelCol = response
-            );
-
-        model = glm.fit(model_frame);
-        
-        return model;
-
-    """
-    Create a pipeline for transforming data in preparation for modelling absences
-    """
-    def __create_absence_modelling_pipeline(self,
-        factor_covariates = [],
-        numeric_covariates = [],
-    ):
-        
-        # Process factor covariates via indexing and creating dummy variables
-        indexers = [StringIndexer(
-            inputCol = covariate, 
-            outputCol = f"{covariate}_index", 
-            handleInvalid = "keep",
-        ) for covariate in factor_covariates];
-        encoders = [OneHotEncoder(inputCol = f"{covariate}_index", outputCol = f"{covariate}_vec", dropLast = True) for covariate in factor_covariates];
-
-        # Bug in pyspark means school_type is having the wrong levels dropped. Only select first two levels
-        slicer = VectorSlicer(inputCol = "school_type_vec", outputCol = "school_type_vec_sliced", indices = [2]);
-        
-        # Assemble all features
-        assembler_inputs = [f"{covariate}_vec" for covariate in factor_covariates if covariate != "school_type"] + numeric_covariates;       
-        assembler_inputs.append("school_type_vec_sliced");
-
-        assembler = VectorAssembler(inputCols = assembler_inputs, outputCol = "features");
-
-        # Create pipeline
-        pipeline = Pipeline(stages = indexers + encoders + [slicer, assembler]);
-        
-        return pipeline;
-
-    """
-    Print out any features which have high collinearity
-    """
-    def __print_high_collinearity(self, frame,
-        threshold = 0.9,
-        idx_sort = False,
-    ):
-        # Get correlation matrix
-        correlation = Correlation.corr(frame, "features");
-        corr_matrix = correlation.collect()[0][0];
-
-        # Convert to np array and find rows and cols with high collinearity
-        corr_matrix = np.array(corr_matrix.toArray());
-
-        # Mask is if the correlation is above the threshold or is NaN
-        mask = (np.abs(corr_matrix) > threshold) | np.isnan(corr_matrix);
-
-        # Remove diagonal and apply mask
-        np.fill_diagonal(mask, False);
-        rows, cols = np.where(mask);
-        
-        # Get features
-        features = frame.schema["features"].metadata["ml_attr"]["attrs"];
-        features = features["binary"] + features["numeric"];
-
-        # Sort features by index
-        if idx_sort:
-            features.sort(key = lambda feature: feature["idx"]);
-
-        # Get feature names
-        feature_names = [feature["name"] for feature in features];
-        
-
-        # Get indices and names of features with high collinearity
-        for i, j in zip(rows, cols):
-            print(f"Features '{feature_names[i]}' ({i}) and '{feature_names[j]}' ({j}) have high collinearity: {corr_matrix[i, j]}");
-
-        if len(rows) == 0:
-            print("No features have high collinearity.");
-
     """ 
     Get data on absences by school type
     """
@@ -739,4 +606,197 @@ class Absences(SparkData):
         );
 
         return frame, datas;
+    
+    """
+    Return a fitted model for absences
+    """
+    def model_absences(self,
+        framework = None,
+        frame = None,
+    ):
+        if framework is None:
+            framework = self.__get_model_framework();
 
+        if frame is None:
+            frame = self.__get_model_data();
+
+        return framework.fit(frame);
+
+    """
+    Produce the dataset required to model absences
+    """
+    def get_model_data(self,
+        geographic_levels = ["School"],
+        filter_cols = [],
+        filter_passes = [],
+        response = "sess_overall",
+        offset = "sess_possible",
+        use_offset = True,
+        factor_covariates = ["time_period", "region_name", "school_type"],
+        numeric_covariates = ["enrolments", "sess_unauthorised_percent", "sess_overall_percent_pa_10_exact", "sess_unauthorised_percent_pa_10_exact", "enrolments_pa_10_exact_percent"],
+        interaction_factor_terms = [("region_name", "school_type")],
+        print_high_collinearity = True,
+    ):
+        # Get school-level data
+        filter_cols, filter_passes = self.__add_default_filters(
+            filter_cols = filter_cols, 
+            filter_passes = filter_passes,
+            default_filter_passes = [geographic_levels, self.__totaless_distinct_school_types]
+        );
+
+        requested_cols = [response] + factor_covariates + numeric_covariates + [offset];
+        
+        frame = self._get_frame(
+            filter_cols = filter_cols,
+            filter_passes = filter_passes,
+            requested_cols = requested_cols
+        );
+                
+        # Apply pipeline to frame
+        pipeline = self.__create_absence_modelling_pipeline(
+            factor_covariates = factor_covariates,
+            numeric_covariates = numeric_covariates,
+            interaction_factor_terms = interaction_factor_terms
+        );
+        model_frame = pipeline.fit(frame).transform(frame);
+        
+        if print_high_collinearity:
+            self.__print_high_collinearity(model_frame);
+        
+        # Create column of log of offset
+        if use_offset:
+            model_frame = model_frame.withColumn(f"log_{offset}", log(offset));
+
+        return model_frame;
+
+    """
+    Return a framework for modelling absences
+    """
+    def __get_model_framework(self,
+        offset = "sess_possible",
+        response = "sess_overall",
+    ):
+        # Fit Poisson GLM with an offset
+        return GeneralizedLinearRegression(
+            family = "poisson",
+            link = "log",
+            featuresCol = "features",
+            labelCol = response,
+            offsetCol = f"log_{offset}",
+        );
+                   
+    """
+    Create a pipeline for transforming data in preparation for modelling absences
+    """
+    def __create_absence_modelling_pipeline(self,
+        factor_covariates = [],
+        numeric_covariates = [],
+        interaction_factor_terms = [()],
+    ):
+        
+        # Process factor covariates via indexing and creating dummy variables
+        indexers = [StringIndexer(
+            inputCol = covariate, 
+            outputCol = f"{covariate}_index", 
+            handleInvalid = "skip",
+            stringOrderType = "alphabetDesc"
+        ) for covariate in factor_covariates];
+        encoders = [OneHotEncoder(
+                inputCol = f"{covariate}_index", 
+                outputCol = f"{covariate}_vec", 
+                dropLast = True
+        ) for covariate in factor_covariates];
+        
+        # Add interaction terms
+        interaction_stages = [];
+        for terms in interaction_factor_terms:
+            col1, col2 = terms;
+            interaction_stages.append(
+                Interaction(
+                    inputCols = [f"{col1}_vec", f"{col2}_vec"],
+                    outputCol = f"{col1}_{col2}_interaction"
+                )
+            );
+
+
+        # Assemble all features
+        assembler_inputs = [f"{covariate}_vec" for covariate in factor_covariates] + numeric_covariates;
+        for terms in interaction_factor_terms:
+            col1, col2 = terms;
+            assembler_inputs.append(f"{col1}_{col2}_interaction");
+
+        assembler = VectorAssembler(inputCols = assembler_inputs, outputCol = "features");
+
+        # Create pipeline
+        pipeline = Pipeline(stages = indexers + encoders + interaction_stages + [assembler]);
+        
+        return pipeline;
+
+    """
+    Print out any features which have high collinearity
+    """
+    def __print_high_collinearity(self, frame,
+        threshold = 0.9,
+        idx_sort = False,
+    ):
+        # Get correlation matrix
+        correlation = Correlation.corr(frame, "features");
+        corr_matrix = correlation.collect()[0][0];
+
+        # Convert to np array and find rows and cols with high collinearity
+        corr_matrix = np.array(corr_matrix.toArray());
+
+        # Mask is if the correlation is above the threshold or is NaN
+        mask = (np.abs(corr_matrix) > threshold) | np.isnan(corr_matrix);
+
+        # Remove diagonal and apply mask
+        np.fill_diagonal(mask, False);
+        rows, cols = np.where(mask);
+        
+        # Get feature names
+        feature_names = self.get_feature_names(frame, idx_sort = idx_sort);
+
+        # Get indices and names of features with high collinearity
+        for i, j in zip(rows, cols):
+            print(f"Features '{feature_names[i]}' ({i}) and '{feature_names[j]}' ({j}) have high collinearity: {corr_matrix[i, j]}");
+
+    """
+    Compute confidence intervals for the model
+    """
+    def get_model_confidence_intervals(self, model, coefficients,
+        z = 1.96,
+    ):
+        # Extract coefficients and SEs
+        standard_errors = model.summary.coefficientStandardErrors;
+
+        # Transform from log scale to original scale
+        standard_errors = [standard_error * coefficient for standard_error, coefficient in zip(standard_errors, coefficients)];
+
+        # Assume normal distribution of SEs (reasonable given extreme sample size and CLT), and calculate confidence intervals
+        lower, upper = zip(*[(coefficient - z * standard_error, coefficient + z * standard_error) for coefficient, standard_error in zip(coefficients, standard_errors)]);
+
+        return lower, upper;
+
+    """
+    Scale coefficients of model to original scale
+    """
+    def scale_coefficients(self, coefficients):
+        return [math.exp(coefficient) for coefficient in coefficients];
+
+    """
+    Get feature names from the model frame
+    """
+    def get_feature_names(self, frame,
+        idx_sort = None,
+    ):
+        features = frame.schema["features"].metadata["ml_attr"]["attrs"];
+        features = features["binary"] + features["numeric"];
+
+        # Sort features by index
+        if idx_sort:
+            features.sort(key = lambda feature: feature["idx"]);
+
+        # Get feature names
+        feature_names = [feature["name"] for feature in features];
+
+        return feature_names; 
