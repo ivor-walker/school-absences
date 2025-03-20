@@ -12,7 +12,7 @@ class View:
     """
     Print a line of text
 
-    @param text: str, the text to print
+    @param text: str, the text to self.display_line
     """
     def display_line(self, text):
         print(text);
@@ -24,7 +24,7 @@ class View:
     """
     def display_menu(self, options):
         for key, value in options.items():
-            print(f"{key}: {value}");
+            self.display_line(f"{key}: {value}");
 
     """
     Prompt the user for input
@@ -65,7 +65,7 @@ class View:
             return user_input;
 
         except: 
-            print("Invalid list.");
+            self.display_line("Invalid list.");
             return self.__prompt_for_list(prompt, split_char);
         
     """
@@ -82,7 +82,7 @@ class View:
             return integer;
 
         except:
-            print("Invalid integer.");
+            self.display_line("Invalid integer.");
             return self.__prompt_for_int(prompt);
     
     """
@@ -92,14 +92,14 @@ class View:
         split_char = "/",
         year_length = 7,
     ):
-        prompt = f"{prompt} (yyyy{split_char}yy, e.g 2007{split_char}08)";
-        # Ask user to input int
-        year = self.__prompt_for_int(prompt);
+        # Ask user to input year
+        prompt = f"{prompt} (yyyy{split_char}yy, e.g 2007{split_char}08): ";
+        year = input(prompt);
 
         # Check year is n digits
         str_year = str(year);
         if len(str_year) != year_length:
-            print("Invalid year.");
+            self.display_line("Invalid year.");
             return self.__prompt_for_year(prompt);
 
         return str_year.replace("/", ""); 
@@ -136,7 +136,7 @@ class View:
         type = "bar",
         mean_line_colour = "red", 
         confidence_intervals_colour = "red",
-        label_rotation = 10,
+        label_rotation = 15,
         figsize = (15, 20),
         top = 0.93,
         bottom = 0.1, 
@@ -237,7 +237,7 @@ class View:
         colourmap = "viridis",
         mean_line_colour = "red",
         confidence_intervals_colour = "red",
-        label_rotation = 10,
+        label_rotation = 15,
     ):
         # Extract column and row labels
         metadata = data["metadata"];
@@ -248,7 +248,7 @@ class View:
         fig, ax = plt.subplots(figsize = figsize);
         fig.suptitle(title, fontsize=20); 
         colours = self.__get_colours(colourmap, len(index_labels));
-         
+            
         # Draw 2d line graph
         if type == "line":
             # Draw a line for each row 
@@ -277,6 +277,9 @@ class View:
                     color = confidence_intervals_colour,
                     alpha = 0.5
                 );
+            
+            # Set tickers as col labels and rotate
+            ax.set_xticklabels(col_labels, rotation=label_rotation, ha="right");
 
 
         # Draw 1d bar graph
@@ -307,9 +310,11 @@ class View:
                     alpha = 0.5
                 );
 
+            # Set tickers as index labels and rotate
+            ax.set_xticklabels(index_labels, rotation=label_rotation, ha="right");
+
         # Add legend and rotate labels
         ax.legend();
-        ax.set_xticklabels(index_labels, rotation=label_rotation, ha="right");
         
         plt.show();
 
@@ -319,6 +324,6 @@ class View:
     """
     def display_multiple_frames(self, frames):
         for title, frame in frames.items():
-            print(title);
+            self.display_line(title);
             self.display_frame(frame); 
-            print("\n");
+            self.display_line("\n");

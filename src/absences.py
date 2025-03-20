@@ -203,7 +203,7 @@ class Absences(SparkData):
         col = "sess_authorised",
         col_renames = { 
             "school_type": "School type",
-            "avg(sess_authorised)": "Authorised absences"
+            "sum(sess_authorised)": "Authorised absences"
         }
     ):
         filter_cols, filter_passes = self.__add_default_filters(
@@ -352,7 +352,7 @@ class Absences(SparkData):
         col = "sess_unauthorised",
         sess_prefix = "sess_",
         col_renames = {
-            "avg(sess_unauthorised)": "Total unauthorised absences"
+            "sum(sess_unauthorised)": "Total unauthorised absences"
         },
     ):
         # Determine whether inputs are regions or local authorities
@@ -469,7 +469,9 @@ class Absences(SparkData):
         row = "region_name",
         col = "time_period",
         data = None,
-        authorised_prefix = "sess_"
+        col_renames = {
+            "region_name": "Region"
+        },
     ):
         # Get all regions if none are provided
         if len(regions) == 0:
@@ -488,6 +490,11 @@ class Absences(SparkData):
             data = data,
             row = row,
             col = col
+        );
+
+        frame = self._rename_cols(
+            frame = frame,
+            col_renames = col_renames
         );
         
         datas = self._collect_frame_to_dict(frame);
@@ -521,7 +528,8 @@ class Absences(SparkData):
             filter_cols = filter_cols,
             filter_passes = filter_passes,
             row = row,
-            col = col
+            col = col,
+            mean = True
         );
 
         frame = self._rename_cols(
@@ -554,7 +562,8 @@ class Absences(SparkData):
             filter_cols = filter_cols,
             filter_passes = filter_passes,
             row = row,
-            col = col
+            col = col,
+            mean = True
         );
 
         frame = self._rename_cols(

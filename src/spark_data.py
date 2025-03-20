@@ -504,15 +504,20 @@ class SparkData:
 
     """
     Round all doubles to n decimal places
-
+    
+    @param frame: dataframe, the dataframe to round
     @param n: int, the number of decimal places to round to
     """
     def __round_numeric_cols(self,
-        n = 5
+        frame = None,
+        n = 5,
     ):
-        for col in self._get_cols():
-            if str(self.__data.schema[col].dataType) == "DoubleType()":
-                self.__data = self.__data.withColumn(
+        if frame is None:
+            frame = self.__data;
+
+        for col in frame.columns:
+            if str(frame.schema[col].dataType) == "DoubleType()":
+                frame = frame.withColumn(
                     col, 
                     F.round(F.col(col), n)
                 );
@@ -537,7 +542,8 @@ class SparkData:
         row = None,
         col = None,
         count = False,
-        normalise = False
+        normalise = False,
+        mean = False
     ):
         # Get all columns required to complete query
         requested_cols = [x for x in [row, col, data] if x is not None];
@@ -555,7 +561,8 @@ class SparkData:
             col = col,
             data = data,
             count = count,
-            normalise = normalise
+            mean = mean,
+            normalise = normalise,
         );
 
         return frame;
@@ -691,6 +698,7 @@ class SparkData:
     @param count: bool, whether to count the data instead of summing it
     @param normalise: bool, whether to normalise the count
     @param n_places: int, the number of decimal places to round to
+    @param mean: bool, whether to calculate the mean of the data
 
     @return frame: dataframe, the aggregated frame
     """
@@ -702,6 +710,7 @@ class SparkData:
         count = None,
         normalise = None,
         n_places = 5,
+        mean = None,
     ):
         frame = frame.groupBy(row);
 
@@ -729,13 +738,21 @@ class SparkData:
             
             return frame;
     
+        # Pivot to get proper rows, and aggregate
+        if data is not None:
+            frame = frame.pivot(col);
+            if mean:
+                return frame.agg(F.mean(data));
+            else:
+                return frame.sum(data);
+
         # If no data provided, assume "col" is data and no pivot requested
-        elif data is None:
-            return frame.agg(F.mean(col));
-        # Else, pivot data and aggregate
         else:
-            return frame.pivot(col).agg(F.mean(data));
-    
+            if mean:
+                return frame.agg(F.mean(col));
+            else:
+                return frame.sum(col);
+            
     """
     Get a frame with aggregates of multiple columns 
     @param frame: dataframe, the dataframe to get the subset from
