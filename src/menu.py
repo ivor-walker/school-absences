@@ -51,6 +51,7 @@ class Menu:
                 type = "str"
             );
             
+            # Run corresponding function based on user choice
             try:
                 if choice == "1": 
                     self.__get_enrolment_by_la_over_time();
@@ -74,10 +75,11 @@ class Menu:
                     self.__view.display_line("Goodbye!");
                     break;
                 else:
-                    raise Exception("Invalid choice.");
-
-            except Exception as e:
-                traceback.print_exc();
+                    raise ValueError("Invalid choice.");
+            
+            # Print any anticipated errors
+            except ValueError as e:
+                self.__view.display_line(f"Error: {e}");
 
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).

@@ -634,23 +634,25 @@ class SparkData:
 
         # For every column and values to be filtered by
         for index, filter_col in enumerate(filter_cols):
-            no_convert = False;
-
             # Convert any integer arguments to string
             filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
-           
+            
             if filter_col in self.__case_mapping:
                 case = self.__case_mapping[filter_col];
-                convert_case = True;
 
             for idx, filter_pass in enumerate(filter_passes[index]):
-                # Rename edge case values
-                if filter_pass in self.__manual_case_renames:
-                    filter_passes[index][idx] = self.__manual_case_renames[filter_pass];
+                fp = "";
                 
                 # Convert case of filter_pass to match case of column
-                elif convert_case:
-                    filter_passes[index] = [self.__convert_case(filter_pass, case) for filter_pass in filter_passes[index]]; 
+                if case:
+                    fp = self.__convert_case(filter_pass, case); 
+
+                # Rename edge case values
+                if fp in self.__manual_case_renames:
+                    fp = self.__manual_case_renames[fp];
+                
+                
+                filter_passes[index][idx] = fp;
 
             selected_filter_passes = filter_passes[index];
             

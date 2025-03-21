@@ -48,7 +48,7 @@ class View:
     ):
         # Ask user to input entire list seperated by split char
         if type == "list": 
-            prompt += f" (separated by {list_split_char}): ";
+            prompt += f" (separated by '{list_split_char}'): ";
             return self.__prompt_for_list(prompt, list_split_char);
         
         # Ask user to input academic year
