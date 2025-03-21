@@ -445,6 +445,7 @@ class SparkData:
         string = None,
         case = None,
     ):
+
         if case == "lower":
             return string.lower();
         elif case == "upper":
@@ -547,7 +548,6 @@ class SparkData:
         count = False,
         normalise = False,
         mean = False,
-        manual_case_renames = {},
     ):
         # Get all columns required to complete query
         requested_cols = [x for x in [row, col, data] if x is not None];
@@ -556,7 +556,6 @@ class SparkData:
             requested_cols = requested_cols,
             filter_cols = filter_cols, 
             filter_passes = filter_passes,
-            manual_case_renames = manual_case_renames
         ); 
         
         # Transpose and aggregate to get requested frame 
@@ -589,7 +588,6 @@ class SparkData:
         filter_cols = [],
         filter_passes = [],
         or_and = "and",
-        manual_case_renames = None
     ):
         if frame is None:
             frame = self.__data;
@@ -603,7 +601,6 @@ class SparkData:
             filter_cols = filter_cols, 
             filter_passes = filter_passes, 
             or_and = or_and,
-            manual_case_renames = manual_case_renames
         );
         
         # Select requested columns and filter by selected rows
@@ -629,7 +626,6 @@ class SparkData:
         filter_cols = [],
         filter_passes = [],
         or_and = None,
-        manual_case_renames = {},
     ):
         # Convert filter passes to correct case and ensure they exist
         filter_passes = [list(set(filter_pass)) for filter_pass in filter_passes];
@@ -638,18 +634,23 @@ class SparkData:
 
         # For every column and values to be filtered by
         for index, filter_col in enumerate(filter_cols):
+            no_convert = False;
+
             # Convert any integer arguments to string
             filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
-            
-            # Get filter values to conform to case of column if required 
+           
             if filter_col in self.__case_mapping:
                 case = self.__case_mapping[filter_col];
-                filter_passes[index] = [self.__convert_case(filter_pass, case) for filter_pass in filter_passes[index]]; 
-            
-            # Rename any edge case values if required
-            if filter_passes[index] in manual_case_renames:
-                filter_passes[index] = manual_case_renames[filter_passes[index]];
-                breakpoint();
+                convert_case = True;
+
+            for idx, filter_pass in enumerate(filter_passes[index]):
+                # Rename edge case values
+                if filter_pass in self.__manual_case_renames:
+                    filter_passes[index][idx] = self.__manual_case_renames[filter_pass];
+                
+                # Convert case of filter_pass to match case of column
+                elif convert_case:
+                    filter_passes[index] = [self.__convert_case(filter_pass, case) for filter_pass in filter_passes[index]]; 
 
             selected_filter_passes = filter_passes[index];
             
@@ -680,6 +681,12 @@ class SparkData:
         query = f" {or_and} ".join(queries);
         
         return query;
+
+    """
+    Setter for manual case renames
+    """
+    def _set_manual_case_renames(self, manual_case_renames):
+        self.__manual_case_renames = manual_case_renames;
 
     """
     Check if a value exists in a column
@@ -824,14 +831,20 @@ class SparkData:
     @return col: str, the column of the first instance of the value
     """
     def _get_first_instance_col(self, needle,
-        frame = None
+        frame = None,
+        no_convert = False,
     ):
         if frame is None:
             frame = self.__data;
+        
+        # Manually rename needle if required
+        if needle in self.__manual_case_renames:
+            needle = self.__manual_case_renames[needle];
+            no_convert = True;
 
         for col in self._get_cols():
             # Convert case of needle to match case of column
-            if col in self.__case_mapping:
+            if no_convert is False and col in self.__case_mapping:
                 case = self.__case_mapping[col];
                 needle = self.__convert_case(needle, case);
             
@@ -841,7 +854,7 @@ class SparkData:
                 value = needle
             ):
                 return col;
-       
+
         raise ValueError(f"Value '{needle}' not found in data!");
 
     """

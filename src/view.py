@@ -46,17 +46,18 @@ class View:
         list_split_char = ",",
         year_split_char = "/",
     ):
+        # Ask user to input entire list seperated by split char
         if type == "list": 
-            # Ask user to input entire list seperated by split char
-            prompt += f" (separated by {split_char}): ";
-            return self.__prompt_for_list(prompt, split_char);
+            prompt += f" (separated by {list_split_char}): ";
+            return self.__prompt_for_list(prompt, list_split_char);
         
+        # Ask user to input academic year
         elif type == "year":
-        prompt = f"{prompt} (yyyy{year_split_char}yy, e.g 2007{year_split_char}08): ";
-            return self.__prompt_for_year(prompt, year_split_char = year_split_char);
+            prompt = f"{prompt} (yyyy{year_split_char}yy, e.g 2007{year_split_char}08): ";
+            return self.__prompt_for_year(prompt, split_char = year_split_char);
 
-        prompt += f" : ";
         elif type == "int":
+            prompt += f" : ";
             return self.__prompt_for_int(prompt);
         
         elif type == "str":
@@ -121,7 +122,7 @@ class View:
 
         # Check string is not empty
         if not string:
-            self.display_line("Invalid string.");
+            self.display_line("Invalid text.");
             return self.__prompt_for_str(prompt);
 
         return string;

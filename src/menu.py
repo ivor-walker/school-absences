@@ -77,7 +77,7 @@ class Menu:
                     raise Exception("Invalid choice.");
 
             except Exception as e:
-                self.__view.display_line(e);
+                traceback.print_exc();
 
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
