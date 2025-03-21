@@ -43,27 +43,30 @@ class View:
     def prompt_user(self,
         prompt = None, 
         type = "str",
-        split_char = ","
+        list_split_char = ",",
+        year_split_char = "/",
     ):
         if type == "list": 
+            # Ask user to input entire list seperated by split char
+            prompt += f" (separated by {split_char}): ";
             return self.__prompt_for_list(prompt, split_char);
+        
+        elif type == "year":
+        prompt = f"{prompt} (yyyy{year_split_char}yy, e.g 2007{year_split_char}08): ";
+            return self.__prompt_for_year(prompt, year_split_char = year_split_char);
 
+        prompt += f" : ";
         elif type == "int":
             return self.__prompt_for_int(prompt);
-
-        elif type == "year":
-            return self.__prompt_for_year(prompt);
-
+        
         elif type == "str":
-            return input(prompt);
+            return self.__prompt_for_str(prompt);
 
     """
     Ask for and recieve list input from the user
     """
     def __prompt_for_list(self, prompt, split_char):
-        # Ask user to input entire list seperated by split char
-        list_prompt = f"{prompt} (separated by {split_char}): ";
-        user_input = input(list_prompt);
+        user_input = input(prompt);
         
         try:
             # Remove whitespace in list
@@ -81,8 +84,6 @@ class View:
     Ask for and recieve a int from the user
     """
     def __prompt_for_int(self, prompt):
-        # Ask user to input int
-        int_prompt = f"{prompt}: ";
         user_input = input(int_prompt);
 
         # Check user input is a int
@@ -95,14 +96,13 @@ class View:
             return self.__prompt_for_int(prompt);
     
     """
-    Ask for and recieve a 4 digit year from the user
+    Ask for and recieve an n digit year from the user
     """
     def __prompt_for_year(self, prompt,
-        split_char = "/",
+        split_char = None,
         year_length = 7,
     ):
         # Ask user to input year
-        prompt = f"{prompt} (yyyy{split_char}yy, e.g 2007{split_char}08): ";
         year = input(prompt);
 
         # Check year is n digits
@@ -111,7 +111,20 @@ class View:
             self.display_line("Invalid year.");
             return self.__prompt_for_year(prompt);
 
-        return str_year.replace("/", ""); 
+        return str_year.replace(split_char, ""); 
+
+    """
+    Ask for and recieve a string from the user
+    """
+    def __prompt_for_str(self, prompt):
+        string = input(prompt);
+
+        # Check string is not empty
+        if not string:
+            self.display_line("Invalid string.");
+            return self.__prompt_for_str(prompt);
+
+        return string;
 
     """
     Display a Spark dataframe to the user

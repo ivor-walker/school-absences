@@ -7,6 +7,8 @@ from pyspark.sql.types import StringType, IntegerType, DoubleType, DateType;
 import numpy as np;
 from scipy.stats import t;
 
+import re;
+
 """
 Class to load and manipulate data with Spark
 """
@@ -441,7 +443,7 @@ class SparkData:
     """
     def __convert_case(self,
         string = None,
-        case = None
+        case = None,
     ):
         if case == "lower":
             return string.lower();
@@ -450,15 +452,16 @@ class SparkData:
 
         elif case == "title":
             return self.__to_title(string);
+        
+        if case == "sentence" or case == "proper":
+            words = string.split(" "); 
 
-        elif case == "sentence":
-            words = string.split(" ");
-            words = [self.__to_title(word) if index == 0 else word.lower() for index, word in enumerate(words)];
-            return " ".join(words);
-
-        elif case == "proper":
-            words = string.split(" ");
-            words = [word.title() if word.lower() not in self.__minor_words else word.lower() for word in words];
+            if case == "sentence":
+                words = [self.__to_title(word) if index == 0 else word.lower() for index, word in enumerate(words)];
+            
+            else:
+                words = [self.__to_title(word) if word.lower() not in self.__minor_words else word.lower() for word in words];
+            
             return " ".join(words);
 
         else:
@@ -543,7 +546,8 @@ class SparkData:
         col = None,
         count = False,
         normalise = False,
-        mean = False
+        mean = False,
+        manual_case_renames = {},
     ):
         # Get all columns required to complete query
         requested_cols = [x for x in [row, col, data] if x is not None];
@@ -551,7 +555,8 @@ class SparkData:
         frame = self._get_frame(
             requested_cols = requested_cols,
             filter_cols = filter_cols, 
-            filter_passes = filter_passes
+            filter_passes = filter_passes,
+            manual_case_renames = manual_case_renames
         ); 
         
         # Transpose and aggregate to get requested frame 
@@ -583,7 +588,8 @@ class SparkData:
         requested_cols = None,
         filter_cols = [],
         filter_passes = [],
-        or_and = "and"
+        or_and = "and",
+        manual_case_renames = None
     ):
         if frame is None:
             frame = self.__data;
@@ -596,7 +602,8 @@ class SparkData:
             frame = frame,
             filter_cols = filter_cols, 
             filter_passes = filter_passes, 
-            or_and = or_and
+            or_and = or_and,
+            manual_case_renames = manual_case_renames
         );
         
         # Select requested columns and filter by selected rows
@@ -621,7 +628,8 @@ class SparkData:
         frame = None,
         filter_cols = [],
         filter_passes = [],
-        or_and = None
+        or_and = None,
+        manual_case_renames = {},
     ):
         # Convert filter passes to correct case and ensure they exist
         filter_passes = [list(set(filter_pass)) for filter_pass in filter_passes];
@@ -632,11 +640,16 @@ class SparkData:
         for index, filter_col in enumerate(filter_cols):
             # Convert any integer arguments to string
             filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
-
+            
             # Get filter values to conform to case of column if required 
             if filter_col in self.__case_mapping:
                 case = self.__case_mapping[filter_col];
                 filter_passes[index] = [self.__convert_case(filter_pass, case) for filter_pass in filter_passes[index]]; 
+            
+            # Rename any edge case values if required
+            if filter_passes[index] in manual_case_renames:
+                filter_passes[index] = manual_case_renames[filter_passes[index]];
+                breakpoint();
 
             selected_filter_passes = filter_passes[index];
             

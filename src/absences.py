@@ -40,7 +40,11 @@ class Absences(SparkData):
 
         # Turn yyyy/yy to yyyy
         self.__clean_years = self.__clean_time_period();
-        
+
+        self.__manual_case_renames = {
+            "Isles of Scilly": "Isles Of Scilly",
+        };
+
     """
     Create dictionary mapping yyyyyy to yyyy/yy
     """
@@ -149,6 +153,8 @@ class Absences(SparkData):
             "la_name": "Local authority",
         }
     ):
+        local_authorities = self.__get_distinct_values("la_name");
+
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [local_authorities],
@@ -161,7 +167,8 @@ class Absences(SparkData):
             filter_passes = filter_passes,
             data = data,
             row = row,
-            col = col
+            col = col,
+            manual_case_renames = self.__manual_case_renames
         );
         
         # Add time period mapping to rename columns
@@ -392,7 +399,8 @@ class Absences(SparkData):
             filter_cols = filter_cols,
             filter_passes = filter_passes,
             col = col,
-            row = row
+            row = row,
+            manual_case_renames = self.__manual_case_renames
         );
 
         frame = self._rename_cols(
@@ -436,7 +444,8 @@ class Absences(SparkData):
             filter_passes = filter_passes,
             cols_category = cols_category,
             cols = cols,
-            row = row
+            row = row,
+            manual_case_renames = self.__manual_case_renames
         );
 
         clean_important_stats_query = self.__clean_col(
