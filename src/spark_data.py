@@ -627,6 +627,7 @@ class SparkData:
         filter_passes = [],
         or_and = None,
     ):
+
         # Convert filter passes to correct case and ensure they exist
         filter_passes = [list(set(filter_pass)) for filter_pass in filter_passes];
         if len(filter_cols) != len(filter_passes):
@@ -636,21 +637,21 @@ class SparkData:
         for index, filter_col in enumerate(filter_cols):
             # Convert any integer arguments to string
             filter_passes[index] = [str(filter_pass) for filter_pass in filter_passes[index]];
+
             
             if filter_col in self.__case_mapping:
                 case = self.__case_mapping[filter_col];
 
             for idx, filter_pass in enumerate(filter_passes[index]):
-                fp = "";
-                
+                fp = filter_pass;
+                 
                 # Convert case of filter_pass to match case of column
-                if case:
-                    fp = self.__convert_case(filter_pass, case); 
+                if "case" in locals():
+                    fp = self.__convert_case(fp, case); 
 
                 # Rename edge case values
                 if fp in self.__manual_case_renames:
                     fp = self.__manual_case_renames[fp];
-                
                 
                 filter_passes[index][idx] = fp;
 
@@ -845,15 +846,16 @@ class SparkData:
             no_convert = True;
 
         for col in self._get_cols():
+            transformed_needle = needle;
             # Convert case of needle to match case of column
             if no_convert is False and col in self.__case_mapping:
                 case = self.__case_mapping[col];
-                needle = self.__convert_case(needle, case);
+                transformed_needle = self.__convert_case(needle, case);
             
             if self.__value_exists(
                 frame = frame,
                 col = col,
-                value = needle
+                value = transformed_needle
             ):
                 return col;
 

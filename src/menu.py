@@ -125,7 +125,7 @@ class Menu:
                 prompt = "Enter the year you want to analyse",
                 type = "year"
             );
-    
+
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type(
             school_types = school_types,
@@ -290,16 +290,9 @@ class Menu:
         display_results = False,
         display_detailed_results = False,
     ):
-        # Get data and names of covariates
+        # Get data and fit model
         frame = self.__absences.get_model_data();
-        feature_names = self.__absences.get_feature_names(frame);
-        
-        # Fit model
         model = self.__absences.model_absences(frame = frame);
-        
-        # Extract coefficients and confidence intervals, and put on correct scale
-        coefficients = self.__absences.scale_coefficients(model.coefficients);
-        lower, upper = self.__absences.get_model_confidence_intervals(model, coefficients);
         
         # Display model summary
         if display_results or display_detailed_results:
@@ -307,9 +300,13 @@ class Menu:
         
         # Display full feature names, coefficient estimates and confidence intervals
         if display_detailed_results:
-            [self.__view.display_line({
-                "feature": feature_names[i],
-                "coefficient": coefficients[i],
-                "lower": lower[i],
-                "upper": upper[i]
-            }) for i in range(len(feature_names))];
+            # Extract coefficients and confidence intervals, and put on correct scale
+            coefficients = self.__absences.scale_coefficients(model.coefficients);
+            lower, upper = self.__absences.get_model_confidence_intervals(model, coefficients);
+            
+            # Extract feature names
+            feature_names = self.__absences.get_feature_names(frame);
+
+            [self.__view.display_line(
+                f"feature name: {feature_names[i]}, coefficient: {coefficients[i]}, lower: {lower[i]}, upper: {upper[i]}"
+            ) for i in range(len(feature_names))];

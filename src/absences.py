@@ -154,8 +154,6 @@ class Absences(SparkData):
             "la_name": "Local authority",
         }
     ):
-        local_authorities = self.__get_distinct_values("la_name");
-
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = [local_authorities],
@@ -366,11 +364,8 @@ class Absences(SparkData):
             "sum(sess_unauthorised)": "Total unauthorised absences"
         },
     ):
-        # Determine whether inputs are regions or local authorities
-        cols_of_input = [self._get_first_instance_col(name) for name in region_or_la];
-        
-
         # Include either region name and/or local authority name in filter columns
+        cols_of_input = [self._get_first_instance_col(requested) for requested in region_or_la];
         filter_cols = [];
         if "region_name" in cols_of_input:
             filter_cols.append("region_name");
@@ -660,7 +655,7 @@ class Absences(SparkData):
         interaction_factor_terms = [("region_name", "school_type")],
         print_high_collinearity = True,
     ):
-        # Get school-level data
+        # Ask for school-level data
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
             filter_passes = filter_passes,
@@ -669,6 +664,7 @@ class Absences(SparkData):
 
         requested_cols = [response] + factor_covariates + numeric_covariates + [offset];
         
+        # Get frame
         frame = self._get_frame(
             filter_cols = filter_cols,
             filter_passes = filter_passes,
@@ -683,6 +679,7 @@ class Absences(SparkData):
         );
         model_frame = pipeline.fit(frame).transform(frame);
         
+        # Check for high (close to perfect) collinearity
         if print_high_collinearity:
             self.__print_high_collinearity(model_frame);
         
@@ -699,7 +696,7 @@ class Absences(SparkData):
         offset = "sess_possible",
         response = "sess_overall",
     ):
-        # Fit Poisson GLM with an offset
+        # Poisson GLM with an offset
         return GeneralizedLinearRegression(
             family = "poisson",
             link = "log",
@@ -785,6 +782,10 @@ class Absences(SparkData):
 
     """
     Compute confidence intervals for the model
+
+    @param model: GeneralizedLinearRegressionModel, the model to get confidence intervals for
+    @param coefficients: list of float, the coefficients of the model
+    @param z: float, the z value for the confidence interval (default z yields 95% confidence interval)
     """
     def get_model_confidence_intervals(self, model, coefficients,
         z = 1.96,
