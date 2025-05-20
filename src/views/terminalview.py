@@ -1,3 +1,6 @@
+from views.baseview import BaseView;
+
+
 import matplotlib.pyplot as plt;
 import matplotlib.cm as cm;
 
@@ -9,7 +12,7 @@ import numpy as np;
 """
 Class for getting input and displaying output to the user
 """
-class View:
+class TerminalView(BaseView):
 
     """
     Constructor: suppress all warnings

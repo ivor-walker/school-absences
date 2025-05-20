@@ -1,5 +1,7 @@
 from absences import Absences;
-from view import View;
+
+from views.terminalview import TerminalView;
+from views.flaskview import FlaskView;
 
 import random;
 
@@ -7,28 +9,26 @@ import random;
 Class to handle the menu for the user to interact with the data
 """
 class Menu:
-    def __init__(self):
+    def __init__(self, view_type):
         # Instantiate data and view
         # Part 1a and 1b performed in constructor of Data class, initialised by Absences class
-        self.__view = View();
-
+        
+        if view_type == "terminal":
+            self.__view = TerminalView();
+        elif view_type == "flask":
+            self.__view = FlaskView();
+        
+        # Load in data
         self.__view.display_line("Loading Spark... (this may take a while)");
         self.__absences = Absences(); 
         
         # Set default user inputs
         self.__defaults = self.__absences.get_default_values();
+
+        self.__view.display_line("Loading complete!");
         
         # Start the menu loop
-        self.__view.display_line("Loading complete!");
-        self.__start_menu();
-    
-    """
-    Start the menu loop giving the user options to interact with the data
-
-    @param menu: dict of menu items the user can choose from
-    """
-    def __start_menu(self,
-        menu = {
+        self.__menu = {
             "1": "Task 1C: Get enrolment, by local authority, over time",
             "2": "Task 1D: Get authorised absences, by school type, in a given year",
             "3": "Task 1D Extension: Get exact reasons for absence, by school type, in a given year",
@@ -38,13 +38,28 @@ class Menu:
             "7": "Task 3, Part 1: Chart and get overall absences rates, region and school type",
             "8": "Task 3, Part 2: Model absences, by school type and region, and display results",
             "9": "Task 3, Part 3: Model absences, by school type and region, and display detailed results",
-            "0": "Exit",
         },
-    ):
+        
+        # Start terminal or flask menu
+        if view == "terminal":
+            self.__start_terminal_menu();
+        
+        elif view == "flask":
+            self.start_flask_menu();
+
+    """
+    Start the terminal menu loop giving the user options to interact with the data
+    Terminal menu is in controller because starting the menu requires the view itself, whereas Flask does not
+    """
+    def __start_terminal_menu(self,
+            ):
+        # Add an option to exit the menu
+        self.__menu["0"] = "Exit";
+
         while True:
             # Show menu and ask user for choice
             self.__view.display_line("\nMAIN MENU");
-            self.__view.display_menu(menu);
+            self.__view.display_menu(self.__menu);
             
             choice = self.__view.prompt_user(
                 prompt = "Enter your choice: ",
@@ -54,23 +69,23 @@ class Menu:
             # Run corresponding function based on user choice
             try:
                 if choice == "1": 
-                    self.__get_enrolment_by_la_over_time();
+                    self.get_enrolment_by_la_over_time();
                 elif choice == "2":
-                    self.__get_auth_by_school_type();
+                    self.get_auth_by_school_type();
                 elif choice == "3":
-                    self.__get_auth_by_school_type_detailed();
+                    self.get_auth_by_school_type_detailed();
                 elif choice == "4":
-                    self.__get_unauth_by_la_region();
+                    self.get_unauth_by_la_region();
                 elif choice == "5":
-                    self.__compare_la_in_year();
+                    self.compare_la_in_year();
                 elif choice == "6":
-                    self.__compare_region_attendance_over_time();
+                    self.compare_region_attendance_over_time();
                 elif choice == "7":
-                    self.__eda_school_type_location_absences();
+                    self.eda_school_type_location_absences();
                 elif choice == "8":
-                    self.__model_school_type_location_absences(display_results = True);
+                    self.model_school_type_location_absences(display_results = True);
                 elif choice == "9":
-                    self.__model_school_type_location_absences(display_detailed_results = True);
+                    self.model_school_type_location_absences(display_detailed_results = True);
                 elif choice == "0":
                     self.__view.display_line("Goodbye!");
                     break;
@@ -81,11 +96,17 @@ class Menu:
             except ValueError as e:
                 self.__view.display_line(f"Error: {e}");
 
+    """
+    Start Flask menu
+    """
+    def start_flask_menu(self):
+        self.__view.show_view_form();
+
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
     # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
     
-    def __get_enrolment_by_la_over_time(self,
+    def get_enrolment_by_la_over_time(self,
         use_default = False,
     ):
         if use_default: 
@@ -106,7 +127,7 @@ class Menu:
     # PART 1D
     # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
     
-    def __get_auth_by_school_type(self,
+    def get_auth_by_school_type(self,
         use_default = False,
     ):
         if use_default:
@@ -138,7 +159,7 @@ class Menu:
     # Part 1D EXTENSION
     # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
     
-    def __get_auth_by_school_type_detailed(self,
+    def get_auth_by_school_type_detailed(self,
         use_default = False,
     ): 
         if use_default:
@@ -169,7 +190,7 @@ class Menu:
     # PART 1E
     # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
     
-    def __get_unauth_by_la_region(self,
+    def get_unauth_by_la_region(self,
         use_default = False,
     ):
         if use_default:
@@ -206,7 +227,7 @@ class Menu:
     # PART 2A
     # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
     
-    def __compare_la_in_year(self,
+    def compare_la_in_year(self,
         use_default = False,
         cols = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "enrolments_pa_10_exact_percent", "sess_overall_percent_pa_10_exact"],
     ):
@@ -244,7 +265,7 @@ class Menu:
     # – Are there any regions that have worsened?
     # – Which is the overall best/worst region for pupil attendance?
     
-    def __compare_region_attendance_over_time(self,
+    def compare_region_attendance_over_time(self,
         data = "sess_overall_percent",
     ):
         frame, datas = self.__absences.compare_region_attendance_over_time(
@@ -259,7 +280,7 @@ class Menu:
     # PART 3
     # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
     
-    def __eda_school_type_location_absences(self):
+    def eda_school_type_location_absences(self):
         # Get data and display absences by school type
         school_type_absences_frame, school_type_absences_datas = self.__absences.get_school_type_absences();
         self.__view.display_frame(school_type_absences_frame);
@@ -286,7 +307,7 @@ class Menu:
             title = "Proportion of school types, by region",
         );
     
-    def __model_school_type_location_absences(self,
+    def model_school_type_location_absences(self,
         display_results = False,
         display_detailed_results = False,
     ):
