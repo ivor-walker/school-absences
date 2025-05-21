@@ -59,7 +59,7 @@ class Controller:
     For flask only, set app created by entrypoint
     Flask framework requires app created by entrypoint to be visible to view that produces the web pages using the app
     """
-    def set_app(self, app):
+    def set_flask_app(self, app):
         self.__view.set_app(app);
 
     # PART 1C

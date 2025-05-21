@@ -36,4 +36,4 @@ class FlaskView:
     Display menu template
     """
     def display_menu(self, menu):
-        self.__app.render_template('menu.html', menu=menu, routes=self.__routes);
+        return render_template('menu.html', menu=menu, routes=self.__routes);
