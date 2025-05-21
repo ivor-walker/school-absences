@@ -27,7 +27,7 @@ class Menu:
 
         self.__view.display_line("Loading complete!");
         
-        # Start the menu loop
+        # Define menu
         self.__menu = {
             "1": "Task 1C: Get enrolment, by local authority, over time",
             "2": "Task 1D: Get authorised absences, by school type, in a given year",
@@ -38,69 +38,23 @@ class Menu:
             "7": "Task 3, Part 1: Chart and get overall absences rates, region and school type",
             "8": "Task 3, Part 2: Model absences, by school type and region, and display results",
             "9": "Task 3, Part 3: Model absences, by school type and region, and display detailed results",
-        },
-        
-        # Start terminal or flask menu
-        if view == "terminal":
-            self.__start_terminal_menu();
-        
-        elif view == "flask":
-            self.start_flask_menu();
+        };
 
-    """
-    Start the terminal menu loop giving the user options to interact with the data
-    Terminal menu is in controller because starting the menu requires the view itself, whereas Flask does not
-    """
-    def __start_terminal_menu(self,
-            ):
         # Add an option to exit the menu
-        self.__menu["0"] = "Exit";
-
-        while True:
-            # Show menu and ask user for choice
-            self.__view.display_line("\nMAIN MENU");
-            self.__view.display_menu(self.__menu);
-            
-            choice = self.__view.prompt_user(
-                prompt = "Enter your choice: ",
-                type = "str"
-            );
-            
-            # Run corresponding function based on user choice
-            try:
-                if choice == "1": 
-                    self.get_enrolment_by_la_over_time();
-                elif choice == "2":
-                    self.get_auth_by_school_type();
-                elif choice == "3":
-                    self.get_auth_by_school_type_detailed();
-                elif choice == "4":
-                    self.get_unauth_by_la_region();
-                elif choice == "5":
-                    self.compare_la_in_year();
-                elif choice == "6":
-                    self.compare_region_attendance_over_time();
-                elif choice == "7":
-                    self.eda_school_type_location_absences();
-                elif choice == "8":
-                    self.model_school_type_location_absences(display_results = True);
-                elif choice == "9":
-                    self.model_school_type_location_absences(display_detailed_results = True);
-                elif choice == "0":
-                    self.__view.display_line("Goodbye!");
-                    break;
-                else:
-                    raise ValueError("Invalid choice.");
-            
-            # Print any anticipated errors
-            except ValueError as e:
-                self.__view.display_line(f"Error: {e}");
+        if view == terminal:
+            self.__menu["0"] = "Exit";
 
     """
-    Start Flask menu
+    Expose view's display menu 
     """
-    def start_flask_menu(self):
-        self.__view.show_view_form();
+    def display_menu(self):
+        return self.__view.display_menu(self.__menu);
+    
+    """
+    Expose view's display error
+    """
+    def display_error(self, error):
+        return self.__view.display_error(error);
 
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
@@ -241,13 +195,13 @@ class Menu:
                 prompt = "Enter the local authorities you want to compare", 
                 type = "list"
             );
-            
+
             # Get the year from the user
             year = self.__view.prompt_user(
                 prompt = "Enter the year you want to analyse", 
                 type = "year"
             );
-        
+
         frame, datas = self.__absences.compare_la_in_year(
             local_authorities = local_authorities,
             years = [year],

@@ -30,13 +30,24 @@ class TerminalView(BaseView):
         print(text);
     
     """
-    Print a menu of options to the user
+    Print a menu of options to the user and allow user to input a choice
 
     @param options: dictionary of options to display
     """
-    def display_menu(self, options):
+    def display_menu(self, options,
+        greeting = "MAIN MENU",
+    ):
+        self.__view.display_line(f"\n{greeting}");
+            
         for key, value in options.items():
             self.display_line(f"{key}: {value}");
+
+        choice = self.__view.prompt_user(
+            prompt = "Enter your choice: ",
+            type = "str"
+        );
+
+        return choice;
 
     """
     Prompt the user for input

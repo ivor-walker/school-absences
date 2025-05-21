@@ -15,7 +15,7 @@ app.secret_key = "...";
 # Menu for analysis
 @app.route("/");
 def menu():
-    controller.get_menu();
+    controller.start_flask_menu();
 
 @app.route("/la_enrolment", methods = ["GET"]);
 def la_enrolment():

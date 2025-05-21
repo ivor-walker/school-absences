@@ -4,6 +4,9 @@ View's interface
 class BaseView():
     def display_line(self, text):
         raise NotImplementedError;
+    
+    def start_menu(self):
+        raise NotImplementedError;
 
     def display_menu(self, options):
         raise NotImplementedError;
