@@ -55,6 +55,13 @@ class Controller:
     def display_error(self, error):
         return self.__view.display_error(error);
 
+    """
+    For flask only, set app created by entrypoint
+    Flask framework requires app created by entrypoint to be visible to view that produces the web pages using the app
+    """
+    def set_app(self, app):
+        self.__view.set_app(app);
+
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
     # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
@@ -97,7 +104,8 @@ class Controller:
             # Ask user for year
             year = self.__view.prompt_user(
                 prompt = "Enter the year you want to analyse",
-                type = "year"
+                type = "year",
+                final_prompt = True,
             );
 
         # Get and display required table
@@ -129,7 +137,8 @@ class Controller:
             # Ask user for year
             year = self.__view.prompt_user(
                 prompt = "Enter the year you want to analyse",
-                type = "year"
+                type = "year",
+                final_prompt = True,
             );
     
         # Get and display required table
@@ -166,7 +175,8 @@ class Controller:
             # Ask user for mixed region and local authority
             region_or_la = self.__view.prompt_user(
                 prompt = "Enter the regions or local authorities you want to analyse",
-                type = "list"
+                type = "list",
+                final_prompt = True,
             );
         
         # Get and display required table
@@ -198,7 +208,8 @@ class Controller:
             # Get the year from the user
             year = self.__view.prompt_user(
                 prompt = "Enter the year you want to analyse", 
-                type = "year"
+                type = "year",
+                final_prompt = True,
             );
 
         frame, datas = self.__absences.compare_la_in_year(

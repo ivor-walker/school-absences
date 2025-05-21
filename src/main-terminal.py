@@ -36,6 +36,6 @@ while True:
         else:
             raise ValueError("Invalid choice.");
     
-    # Print any anticipated errors
+    # Display expected errors
     except ValueError as e:
         controller.display_error(f"Error: {e}");
