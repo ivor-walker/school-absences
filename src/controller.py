@@ -8,25 +8,22 @@ import random;
 """
 Class to handle the menu for the user to interact with the data
 """
-class Menu:
+class Controller:
     def __init__(self, view_type):
+        print("Loading view...");
+
         # Instantiate data and view
-        # Part 1a and 1b performed in constructor of Data class, initialised by Absences class
-        
         if view_type == "terminal":
             self.__view = TerminalView();
         elif view_type == "flask":
             self.__view = FlaskView();
         
-        # Load in data
-        self.__view.display_line("Loading Spark... (this may take a while)");
+        print("View loaded, loading data and menu (this will take a while)...");
         self.__absences = Absences(); 
         
         # Set default user inputs
         self.__defaults = self.__absences.get_default_values();
 
-        self.__view.display_line("Loading complete!");
-        
         # Define menu
         self.__menu = {
             "1": "Task 1C: Get enrolment, by local authority, over time",
@@ -41,17 +38,19 @@ class Menu:
         };
 
         # Add an option to exit the menu
-        if view == terminal:
+        if view == "terminal":
             self.__menu["0"] = "Exit";
 
+        print("Loading complete!");
+
     """
-    Expose view's display menu 
+    Expose view's display menu method
     """
     def display_menu(self):
         return self.__view.display_menu(self.__menu);
     
     """
-    Expose view's display error
+    Expose view's display error method
     """
     def display_error(self, error):
         return self.__view.display_error(error);

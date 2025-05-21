@@ -25,7 +25,7 @@ class SparkData:
         
         # Suppress logging
         self.__spark.sparkContext.setLogLevel("ERROR");
-
+    
         # Load data as csv
         self.__load_csv(csv_loc);
         

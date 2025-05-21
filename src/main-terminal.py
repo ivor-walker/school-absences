@@ -6,7 +6,6 @@ Entry point of the program for terminal view
 view_type = "terminal":
 controller = Controller(view_type);
 
-
 # Menu loop
 while True:
     # Show menu and ask user for choice
@@ -39,4 +38,4 @@ while True:
     
     # Print any anticipated errors
     except ValueError as e:
-        controller.__view.display_line(f"Error: {e}");
+        controller.display_error(f"Error: {e}");
