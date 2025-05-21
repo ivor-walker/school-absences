@@ -3,13 +3,13 @@ from controller import Controller;
 """
 Entry point of the program for terminal view
 """
-view_type = "terminal":
+view_type = "terminal";
 controller = Controller(view_type);
 
 # Menu loop
 while True:
     # Show menu and ask user for choice
-    choice = controller.display_menu(controller.__menu);
+    choice = controller.display_menu();
                 
     # Run corresponding function based on user choice
     try:

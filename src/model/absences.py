@@ -1,4 +1,4 @@
-from spark_data import SparkData;
+from model.spark_data import SparkData;
 
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorSlicer, Interaction;
 from pyspark.ml import Pipeline;

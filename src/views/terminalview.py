@@ -37,12 +37,12 @@ class TerminalView(BaseView):
     def display_menu(self, options,
         greeting = "MAIN MENU",
     ):
-        self.__view.display_line(f"\n{greeting}");
+        self.display_line(f"\n{greeting}");
             
         for key, value in options.items():
             self.display_line(f"{key}: {value}");
 
-        choice = self.__view.prompt_user(
+        choice = self.prompt_user(
             prompt = "Enter your choice: ",
             type = "str"
         );
@@ -59,6 +59,8 @@ class TerminalView(BaseView):
         type = "str",
         list_split_char = ",",
         year_split_char = "/",
+        # Not applicable for terminal view
+        final_prompt = None,
     ):
         # Ask user to input entire list seperated by split char
         if type == "list": 
@@ -373,3 +375,10 @@ class TerminalView(BaseView):
             self.display_line(title);
             self.display_frame(frame); 
             self.display_line("\n");
+
+    """
+    Display a user error
+    @param error: error, the error to display
+    """
+    def display_error(self, error):
+        self.display_line(f"ERROR: {str(error)}");

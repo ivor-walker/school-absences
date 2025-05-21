@@ -1,4 +1,4 @@
-from absences import Absences;
+from model.absences import Absences;
 
 from views.terminalview import TerminalView;
 from views.flaskview import FlaskView;
@@ -38,7 +38,7 @@ class Controller:
         };
 
         # Add an option to exit the menu
-        if view == "terminal":
+        if view_type == "terminal":
             self.__menu["0"] = "Exit";
 
         print("Loading complete!");
@@ -75,7 +75,8 @@ class Controller:
             # Ask user for local authorities 
             local_authorities = self.__view.prompt_user(
                 prompt = "Enter the local authorities you want to analyse", 
-                type = "list"
+                type = "list",
+                final_prompt = True,
             );
         
         frame = self.__absences.get_enrolment_by_la_over_time(
