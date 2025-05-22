@@ -12,7 +12,7 @@ import random;
 Class to handle the menu for the user to interact with the data
 """
 class Controller:
-    def __init__(self, view_type, view_debug = False):
+    def __init__(self, view_type, view_debug = True):
         print("Loading view...");
 
         # Instantiate data and view
@@ -236,9 +236,13 @@ class Controller:
             years = [year],
             cols = cols 
         );
-            
-        return self.__view.display_graphs(datas,
-            title = "Local authority comparison",
+        
+        figure = create_multiple_graphs(datas);
+
+        return self.__view.display_figures(
+            frames = [frame],
+            figures = [figure],
+            titles = ["Local authority comparison"],
         );
     
     # PART 2B
@@ -255,7 +259,7 @@ class Controller:
             data = data
         );
         
-        return self.__view.display_single_graph(datas,
+        return self.__view.display_single_graph(frame, datas,
             title = "Overall absence rate over time, by region",
         );
     

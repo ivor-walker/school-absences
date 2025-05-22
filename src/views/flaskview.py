@@ -4,6 +4,7 @@ View using Flask
 
 from flask import Flask, render_template, request;
 from utils.earlyresponse import EarlyResponse;
+from utils.typevalidation import convert_type;
 
 class FlaskView:
     def __init__(self):
@@ -28,7 +29,6 @@ class FlaskView:
     """
     def set_app(self, app):
         self.__app = app;
-
 
     """
     Display menu template
@@ -71,7 +71,7 @@ class FlaskView:
                 target_type = self.__last_prompts_types[i][1]; 
                 target_value = datas_keys_values[i][1][0];
 
-                datas_keys_values[i] = (datas_keys_values[i][0], self.__convert_type(target_value, target_type));
+                datas_keys_values[i] = (datas_keys_values[i][0], convert_type(target_value, target_type));
 
         # Each response is a 1-element list, need to join them before sending to client
 
@@ -82,42 +82,7 @@ class FlaskView:
         return datas_values;
     
     # TODO get both views to use below method 
-    """
-    Check and convert a string to a target type
-    """
-    def __convert_type(self, target_value, target_type,
-        list_split_char = ",",
-        year_split_char = "/",
-        year_len = 7
-    ):
-        # For a list, split into list and remove all whitespace in elements
-        if target_type == "list":
-            try:
-                target_value = target_value.split(list_split_char);
-            except Exception as e:
-                raise ValueError(f"{target_value} is not a valid list");
-
-            target_value = [value.strip() for value in target_value];
-
-        elif target_type == "int":
-            try:
-                target_value = int(target_value);
-            except Exception as e:
-                raise ValueError(f"{target_value} is not a valid integer");
-
-        elif target_type == "year":
-            str_year = str(target_value);
-            if len(str_year) != year_len:
-                raise ValueError(f"{target_value} is not a valid year");
-            
-            target_value = target_value.replace(year_split_char, "");
-        
-        elif target_type == "string":
-            if not target_value:
-                raise ValueError(f"{target_value} is not a valid string");
-        
-        return target_value;
-
+    
 
     """
     Display an error in most recent form
