@@ -16,12 +16,19 @@
             <input
                 type = "text"
                 name = "response_{{ loop.index0 }}"
+                {# Add a placeholder for the input field #}
+                {% if loop.index0 < len_responses %}
+                    value = "{{ responses[loop.index0] }}"
+                {% endif %}
                 required
             >
         
         {% endfor %}
         <button type="submit">Submit</button>
         </form>
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
     </body>
 </html>
 

@@ -53,12 +53,39 @@ class FlaskView:
         
         # Render additional form and return it to user       
         if not datas:
-            html = render_template('form.html', prompts_types = list(zip(prompts, types)));
+            self.__last_prompts_types = list(zip(prompts, types));
+            html = render_template(
+                'form.html', 
+                prompts_types = self.__last_prompts_types,
+                responses = [],
+                len_responses = 0,
+                error = None,
+            );
             raise EarlyResponse(html);
         
         # Else, extract data and return it to controller
         else:
-            datas_keys_values = [(key, value) for key, value in datas.to_dict(flat = False).items() if key != 'submit']; 
-            datas_values = [key_value[1] for key_value in datas_keys_values];
+            return self.__extract_responses(datas);
+    
+    """
+    Helper method to extract data from form response
+    """
+    def __extract_responses(self, datas):
+        datas_keys_values = [(key, value) for key, value in datas.to_dict(flat = False).items() if key != 'submit']; 
+        datas_values = [key_value[1] for key_value in datas_keys_values];
 
-            return datas_values;
+        return datas_values;
+
+    """
+    Display an error in most recent form
+    """
+    def display_error(self, error):
+        responses = ["".join(response) for response in self.__extract_responses(request.args)];
+
+        return render_template(
+            'form.html', 
+            prompts_types = self.__last_prompts_types,
+            responses = responses, 
+            len_responses = len(responses),
+            error = str(error)
+        );

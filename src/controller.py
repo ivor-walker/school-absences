@@ -67,6 +67,9 @@ class Controller:
         # Define a wrapper to wrap around controller methods
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            # Get instance of controller
+            self = args[0];
+
             # Try to run controller method
             try:
                 return fn(*args, **kwargs);
@@ -77,7 +80,7 @@ class Controller:
             
             # Catch any expected errors produced by controller or view
             except ValueError as e:
-                self.__view.display_error(e);
+                return self.__view.display_error(e);
     
         return wrapper;
     
@@ -100,11 +103,11 @@ class Controller:
             local_authorities = self.__defaults["la_name"];
         else:
             # Ask user for local authorities 
-            responses = self.__view.prompt_user(
+            self.responses = self.__view.prompt_user(
                 prompts = ["Enter the local authorities you want to analyse"], 
                 types = ["list"],
             );
-            local_authorities = responses[0];
+            local_authorities = self.responses[0];
         
         frame = self.__absences.get_enrolment_by_la_over_time(
             local_authorities = local_authorities
@@ -115,6 +118,7 @@ class Controller:
     # PART 1D
     # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
     
+    @catch_early_response
     def get_auth_by_school_type(self,
         use_default = False,
     ):
@@ -124,14 +128,14 @@ class Controller:
     
         else:
             # Ask user for school types and year
-            responses = self.__view.prompt_user(
+            self.responses = self.__view.prompt_user(
                 prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            school_types = responses[0];
-            year = responses[1];
-
+            school_types = self.responses[0];
+            year = self.responses[1];
+        
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type(
             school_types = school_types,
@@ -144,6 +148,7 @@ class Controller:
     # Part 1D EXTENSION
     # Extend this by allowing the user to further see the breakdown of specific types of authorised absences given to pupils by school type in a specific time period (year).
     
+    @catch_early_response
     def get_auth_by_school_type_detailed(self,
         use_default = False,
     ): 
@@ -153,13 +158,13 @@ class Controller:
         
         else:
             # Get school types and year from user
-            responses = self.__view.prompt_user(
+            self.responses = self.__view.prompt_user(
                 prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            school_types = responses[0];
-            year = responses[1];
+            school_types = self.responses[0];
+            year = self.responses[1];
     
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type_detailed(
@@ -172,6 +177,7 @@ class Controller:
     # PART 1E
     # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
     
+    @catch_early_response
     def get_unauth_by_la_region(self,
         use_default = False,
     ):
@@ -187,13 +193,13 @@ class Controller:
     
         else:
             # Ask user for year and region or local authority
-            responses = self.__view.prompt_user(
+            self.responses = self.__view.prompt_user(
                 prompts = ["Enter the year you want to analyse", "Enter the regions or local authorities you want to analyse"],
                 types = ["year", "list"],
             );
 
-            year = responses[0];
-            region_or_la = responses[1];
+            year = self.responses[0];
+            region_or_la = self.responses[1];
         
         # Get and display required table
         frame = self.__absences.get_unauth_by_la_region(
@@ -206,6 +212,7 @@ class Controller:
     # PART 2A
     # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
     
+    @catch_early_response
     def compare_la_in_year(self,
         use_default = False,
         cols = ["sess_authorised_percent", "sess_unauthorised_percent", "sess_overall_percent", "enrolments_pa_10_exact_percent", "sess_overall_percent_pa_10_exact"],
@@ -216,13 +223,13 @@ class Controller:
 
         # Get local authorities and year from user
         else:
-            responses = self.__view.prompt_user(
+            self.responses = self.__view.prompt_user(
                 prompts = ["Enter the local authorities you want to compare", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            local_authorities = responses[0];
-            year = responses[1];
+            local_authorities = self.responses[0];
+            year = self.responses[1];
 
         frame, datas = self.__absences.compare_la_in_year(
             local_authorities = local_authorities,
@@ -241,6 +248,7 @@ class Controller:
     # – Are there any regions that have worsened?
     # – Which is the overall best/worst region for pupil attendance?
     
+    @catch_early_response
     def compare_region_attendance_over_time(self,
         data = "sess_overall_percent",
     ):
@@ -256,6 +264,7 @@ class Controller:
     # PART 3
     # Explore whether there is a link between school type, pupil absences and the location of the school. For example, is it more likely that schools of type X will have more pupil absences in location Y? Write the code that performs this analysis, and write a paragraph in your report (with appropriate visualisations/charts) that highlight + explain your findings.
     
+    @catch_early_response
     def eda_school_type_location_absences(self):
         # Get data and display absences by school type
         school_type_absences_frame, school_type_absences_datas = self.__absences.get_school_type_absences();
@@ -283,6 +292,7 @@ class Controller:
             title = "Proportion of school types, by region",
         );
     
+    @catch_early_response
     def model_school_type_location_absences(self,
         display_results = False,
         display_detailed_results = False,
