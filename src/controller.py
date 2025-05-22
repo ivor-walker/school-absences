@@ -6,13 +6,15 @@ from views.flaskview import FlaskView;
 from utils.earlyresponse import EarlyResponse;
 from functools import wraps;
 
+from utils.graphs import create_multiple_graphs, create_single_graph;
+
 import random;
 
 """
 Class to handle the menu for the user to interact with the data
 """
 class Controller:
-    def __init__(self, view_type, view_debug = True):
+    def __init__(self, view_type, view_debug = False):
         print("Loading view...");
 
         # Instantiate data and view

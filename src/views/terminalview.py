@@ -1,12 +1,14 @@
 from views.baseview import BaseView;
 
-
 import warnings;
 
 import math;
 import numpy as np;
 
 from utils.typevalidation import convert_type;
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg;
+import tkinter as tk;
 
 """
 Class for getting input and displaying output to the user
@@ -110,18 +112,38 @@ class TerminalView(BaseView):
         figures = None,
         titles = None,
     ):
+        self.display_multiple_frames(frames, titles);
+
         for fig, title in zip(figures, titles): 
-            self.display_line(f"\n{title}");
-            fig.show();
+            self.__show_figure(fig, title);
         
-        self.display_multiple_frames(frames);
+    """
+    Create a GUI from a figure
+    """
+    def __show_figure(self, fig, title):
+        # Create a Tkinter window
+        root = tk.Tk();
+        root.wm_title(title);
+
+        # Create a canvas to display the figure
+        canvas = FigureCanvasTkAgg(fig, master=root);
+        canvas.draw();
+
+        # Get the Tkinter widget from the canvas
+        widget = canvas.get_tk_widget();
+        
+        # Pack the widget into the window
+        widget.pack(side=tk.TOP, fill=tk.BOTH, expand=1);
+
+        # Start the Tkinter main loop
+        tk.mainloop();
 
     """
     Display multiple dataframes to the user
     @param frame: dictionary of titles and frameframes to display
     """
-    def display_multiple_frames(self, frames):
-        for title, frame in frames.items():
+    def display_multiple_frames(self, frames, titles):
+        for title, frame in zip(titles, frames):
             self.display_line(title);
             self.display_frame(frame); 
             self.display_line("\n");

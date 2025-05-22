@@ -1,3 +1,8 @@
+import math;
+import numpy as np;
+
+import matplotlib.cm as cm;
+from matplotlib.figure import Figure;
 
 """
 Display multiple graphs
@@ -16,7 +21,7 @@ Display multiple graphs
 @param hspace: vertical spacing between subplots
 @param wspace: horizontal spacing between subplots
 """
-def create_multiple_graphs(self, datas,
+def create_multiple_graphs(datas,
     title = "",
     n_cols = 2,
     colourmap = "viridis",
@@ -46,12 +51,12 @@ def create_multiple_graphs(self, datas,
         len_index_labels / n_cols
     );
 
-    fig = Figure();
-    axs = fig.subplots(n_rows, n_cols, figsize = figsize);
+    fig = Figure(figsize = figsize);
+    axs = fig.subplots(n_rows, n_cols);
     fig.suptitle(title, fontsize=20);
     
     # Use requested colour scheme
-    colours = self.__get_colours(colourmap, len(col_labels)); 
+    colours = get_colours(colourmap, len(col_labels)); 
     
     # Create each subplot
     for index, row_label in enumerate(index_labels):
@@ -117,13 +122,13 @@ Get list of colours for a colourmap
 
 @return list of colours
 """
-def __get_colours(self, colourmap, n_colours):
+def get_colours(colourmap, n_colours):
     return cm.get_cmap(colourmap)(np.linspace(0, 1, n_colours));
 
 """
 Display a single graph
 """
-def create_single_graph(self, data, 
+def create_single_graph(data, 
     title = "",
     type = "line",
     figsize = (15, 10),
@@ -139,10 +144,10 @@ def create_single_graph(self, data,
     index_labels = metadata["index_labels"];
 
     # Set up figure and title
-    fig = Figure();
-    ax = fig.subplots(figsize = figsize);
+    fig = Figure(figsize = figsize);
+    ax = fig.subplots();
     fig.suptitle(title, fontsize=20); 
-    colours = self.__get_colours(colourmap, len(index_labels));
+    colours = get_colours(colourmap, len(index_labels));
     
     # Enable confidence intervals only if enough columns or rows are being compared
     if len(col_labels) < num_cols_for_cis and len(row_labels) < num_cols_for_cis:
