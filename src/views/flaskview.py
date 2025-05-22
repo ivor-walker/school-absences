@@ -57,20 +57,67 @@ class FlaskView:
         
         # Else, extract data and return it to controller
         else:
-            return self.__extract_responses(datas, join_members = False);
+            return self.__extract_responses(datas, join_members = False, type_match = True);
     
     """
     Helper method to extract data from form response
     """
-    def __extract_responses(self, datas, join_members = True):
+    def __extract_responses(self, datas, join_members = True, type_match = False, list_split_char = ","):
         datas_keys_values = [(key, value) for key, value in datas.to_dict(flat = False).items() if key != 'submit']; 
-        datas_values = [key_value[1] for key_value in datas_keys_values];
+
+        # Need to convert from string to target type for controller
+        if type_match:
+            for i in range(len(datas_keys_values)):
+                target_type = self.__last_prompts_types[i][1]; 
+                target_value = datas_keys_values[i][1][0];
+
+                datas_keys_values[i] = (datas_keys_values[i][0], self.__convert_type(target_value, target_type));
 
         # Each response is a 1-element list, need to join them before sending to client
+
+        datas_values = [key_value[1] for key_value in datas_keys_values];
         if join_members:
             datas_values = ["".join(value) for value in datas_values];
 
         return datas_values;
+    
+    # TODO get both views to use below method 
+    """
+    Check and convert a string to a target type
+    """
+    def __convert_type(self, target_value, target_type,
+        list_split_char = ",",
+        year_split_char = "/",
+        year_len = 7
+    ):
+        # For a list, split into list and remove all whitespace in elements
+        if target_type == "list":
+            try:
+                target_value = target_value.split(list_split_char);
+            except Exception as e:
+                raise ValueError(f"{target_value} is not a valid list");
+
+            target_value = [value.strip() for value in target_value];
+
+        elif target_type == "int":
+            try:
+                target_value = int(target_value);
+            except Exception as e:
+                raise ValueError(f"{target_value} is not a valid integer");
+
+        elif target_type == "year":
+            str_year = str(target_value);
+            if len(str_year) != year_len:
+                raise ValueError(f"{target_value} is not a valid year");
+            
+            target_value = target_value.replace(year_split_char, "");
+        
+        elif target_type == "string":
+            if not target_value:
+                raise ValueError(f"{target_value} is not a valid string");
+        
+        return target_value;
+
 
     """
     Display an error in most recent form
