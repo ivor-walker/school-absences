@@ -123,17 +123,14 @@ class Controller:
             year = self.__defaults["time_period"];
     
         else:
-            # Ask user for school types 
-            school_types = self.__view.prompt_user(
-                prompt = "Enter the school types you want to analyse", 
-                type = "list"
+            # Ask user for school types and year
+            responses = self.__view.prompt_user(
+                prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
+                types = ["list", "year"],
             );
-                
-            # Ask user for year
-            year = self.__view.prompt_user(
-                prompt = "Enter the year you want to analyse",
-                type = "year",
-            );
+
+            school_types = responses[0];
+            year = responses[1];
 
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type(
@@ -155,18 +152,14 @@ class Controller:
             year = self.__defaults["time_period"];
         
         else:
-            # Ask user for school types
-            school_types = self.__view.prompt_user(
-                prompt = "Enter the school types you want to analyse", 
-                type = "list"
+            # Get school types and year from user
+            responses = self.__view.prompt_user(
+                prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
+                types = ["list", "year"],
             );
-    
-            # Ask user for year
-            year = self.__view.prompt_user(
-                prompt = "Enter the year you want to analyse",
-                type = "year",
-                final_prompt = True,
-            );
+
+            school_types = responses[0];
+            year = responses[1];
     
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type_detailed(
@@ -193,18 +186,14 @@ class Controller:
                 region_or_la = self.__defaults["la_name"];
     
         else:
-            # Ask user for year
-            year = self.__view.prompt_user(
-                prompt = "Enter the year you want to analyse",
-                type = "year"
+            # Ask user for year and region or local authority
+            responses = self.__view.prompt_user(
+                prompts = ["Enter the year you want to analyse", "Enter the regions or local authorities you want to analyse"],
+                types = ["year", "list"],
             );
-    
-            # Ask user for mixed region and local authority
-            region_or_la = self.__view.prompt_user(
-                prompt = "Enter the regions or local authorities you want to analyse",
-                type = "list",
-                final_prompt = True,
-            );
+
+            year = responses[0];
+            region_or_la = responses[1];
         
         # Get and display required table
         frame = self.__absences.get_unauth_by_la_region(
@@ -224,20 +213,16 @@ class Controller:
         if use_default:
             local_authorities = self.__defaults["la_name"];
             year = self.__defaults["time_period"];
-    
+
+        # Get local authorities and year from user
         else:
-            # Get local authorities from the user
-            local_authorities = self.__view.prompt_user(
-                prompt = "Enter the local authorities you want to compare", 
-                type = "list"
+            responses = self.__view.prompt_user(
+                prompts = ["Enter the local authorities you want to compare", "Enter the year you want to analyse"],
+                types = ["list", "year"],
             );
 
-            # Get the year from the user
-            year = self.__view.prompt_user(
-                prompt = "Enter the year you want to analyse", 
-                type = "year",
-                final_prompt = True,
-            );
+            local_authorities = responses[0];
+            year = responses[1];
 
         frame, datas = self.__absences.compare_la_in_year(
             local_authorities = local_authorities,

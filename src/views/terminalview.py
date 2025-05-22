@@ -42,19 +42,33 @@ class TerminalView(BaseView):
         for key, value in options.items():
             self.display_line(f"{key}: {value}");
 
-        choice = self.prompt_user(
+        choice = self.__single_prompt(
             prompt = "Enter your choice: ",
             type = "str"
         );
 
         return choice;
-
+    
     """
-    Prompt the user for input
-    @param prompt: str, the prompt to display to the user
-    @param type: str, the type of input to get from the user
+    Display all prompts to the user sequentially
     """
     def prompt_user(self,
+        prompts = None,
+        types = None,
+    ):
+        responses = [];
+
+        for prompt, type in zip(prompts, types):
+            # Display prompt and get user input
+            response = self.__single_prompt(prompt, type);
+            responses.append(response);
+
+        return responses;
+            
+    """
+    Display a single prompt for the user for input
+    """
+    def __single_prompt(self,
         prompt = None, 
         type = "str",
         list_split_char = ",",
