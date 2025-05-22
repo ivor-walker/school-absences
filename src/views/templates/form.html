@@ -26,8 +26,21 @@
         {% endfor %}
         <button type="submit">Submit</button>
         </form>
+    {# Display error message from server #}
     {% if error %}
         <p class="error">{{ error }}</p>
+    {% endif %}
+    
+    {# Display text reply from server #}
+    {% if text %}
+        <p class="text_reply">{{ text }}</p>
+    {% endif %}
+
+    {# Display any HTML table reply from server, e.g. a requested Spark frame #}
+    {% if html_table %}
+        <div class="table_reply">
+            {{ html_table|safe }}
+        </div>
     {% endif %}
     </body>
 </html>

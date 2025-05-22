@@ -12,7 +12,7 @@ import random;
 Class to handle the menu for the user to interact with the data
 """
 class Controller:
-    def __init__(self, view_type, view_debug = True):
+    def __init__(self, view_type, view_debug = False):
         print("Loading view...");
 
         # Instantiate data and view
@@ -103,17 +103,17 @@ class Controller:
             local_authorities = self.__defaults["la_name"];
         else:
             # Ask user for local authorities 
-            self.responses = self.__view.prompt_user(
+            responses = self.__view.prompt_user(
                 prompts = ["Enter the local authorities you want to analyse"], 
                 types = ["list"],
             );
-            local_authorities = self.responses[0];
+            local_authorities = responses[0];
         
         frame = self.__absences.get_enrolment_by_la_over_time(
             local_authorities = local_authorities
         );
     
-        self.__view.display_frame(frame);
+        return self.__view.display_frame(frame);
     
     # PART 1D
     # Allow the user to search the dataset by school type, showing the total number of pupils who were given authorised absences in a specific time period (year).
@@ -128,13 +128,13 @@ class Controller:
     
         else:
             # Ask user for school types and year
-            self.responses = self.__view.prompt_user(
+            responses = self.__view.prompt_user(
                 prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            school_types = self.responses[0];
-            year = self.responses[1];
+            school_types = responses[0];
+            year = responses[1];
         
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type(
@@ -142,7 +142,7 @@ class Controller:
             years = [year]
         );
     
-        self.__view.display_frame(frame);
+        return self.__view.display_frame(frame);
     
     
     # Part 1D EXTENSION
@@ -158,13 +158,13 @@ class Controller:
         
         else:
             # Get school types and year from user
-            self.responses = self.__view.prompt_user(
+            responses = self.__view.prompt_user(
                 prompts = ["Enter the school types you want to analyse", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            school_types = self.responses[0];
-            year = self.responses[1];
+            school_types = responses[0];
+            year = responses[1];
     
         # Get and display required table
         frame = self.__absences.get_auth_by_school_type_detailed(
@@ -172,7 +172,7 @@ class Controller:
             years = [year]
         );
     
-        self.__view.display_frame(frame);
+        return self.__view.display_frame(frame);
     
     # PART 1E
     # Allow a user to search for all unauthorised absences in a certain year, broken down by either region name or local authority name.
@@ -193,13 +193,13 @@ class Controller:
     
         else:
             # Ask user for year and region or local authority
-            self.responses = self.__view.prompt_user(
+            responses = self.__view.prompt_user(
                 prompts = ["Enter the year you want to analyse", "Enter the regions or local authorities you want to analyse"],
                 types = ["year", "list"],
             );
 
-            year = self.responses[0];
-            region_or_la = self.responses[1];
+            year = responses[0];
+            region_or_la = responses[1];
         
         # Get and display required table
         frame = self.__absences.get_unauth_by_la_region(
@@ -207,7 +207,7 @@ class Controller:
             years = [year]
         );
         
-        self.__view.display_frame(frame);
+        return self.__view.display_frame(frame);
     
     # PART 2A
     # Allow a user to compare two local authorities of their choosing in a given year. Justify how you will compare and present the data.
@@ -223,13 +223,13 @@ class Controller:
 
         # Get local authorities and year from user
         else:
-            self.responses = self.__view.prompt_user(
+            responses = self.__view.prompt_user(
                 prompts = ["Enter the local authorities you want to compare", "Enter the year you want to analyse"],
                 types = ["list", "year"],
             );
 
-            local_authorities = self.responses[0];
-            year = self.responses[1];
+            local_authorities = responses[0];
+            year = responses[1];
 
         frame, datas = self.__absences.compare_la_in_year(
             local_authorities = local_authorities,
@@ -237,8 +237,7 @@ class Controller:
             cols = cols 
         );
             
-        self.__view.display_frame(frame);
-        self.__view.display_graphs(datas,
+        return self.__view.display_graphs(datas,
             title = "Local authority comparison",
         );
     
@@ -256,8 +255,7 @@ class Controller:
             data = data
         );
         
-        self.__view.display_frame(frame);
-        self.__view.display_single_graph(datas,
+        return self.__view.display_single_graph(datas,
             title = "Overall absence rate over time, by region",
         );
     
