@@ -94,7 +94,7 @@ class TerminalView(BaseView):
             return user_input;
 
         except: 
-            self.display_line("Invalid list.");
+            self.display_error("Invalid list.");
             return self.__prompt_for_list(prompt, split_char);
         
     """
@@ -109,7 +109,7 @@ class TerminalView(BaseView):
             return integer;
 
         except:
-            self.display_line("Invalid integer.");
+            self.display_error("Invalid integer.");
             return self.__prompt_for_int(prompt);
     
     """
@@ -125,7 +125,7 @@ class TerminalView(BaseView):
         # Check year is n digits
         str_year = str(year);
         if len(str_year) != year_length:
-            self.display_line("Invalid year.");
+            self.display_error("Invalid year.");
             return self.__prompt_for_year(prompt);
 
         return str_year.replace(split_char, ""); 
@@ -138,7 +138,7 @@ class TerminalView(BaseView):
 
         # Check string is not empty
         if not string:
-            self.display_line("Invalid text.");
+            self.display_error("Invalid text.");
             return self.__prompt_for_str(prompt);
 
         return string;

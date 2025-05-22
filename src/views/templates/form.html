@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Form</title>
+    </head>
+
+    <body>
+        <form method="GET">
+        {% for prompt, type in prompts_types %}
+            <h3>{{ prompt }}</h3> 
+            {# Type specific instructions for input form #}
+            {% if type == "list" %}
+                <p>Enter a list of items (comma-separated):</p>
+            {% endif %}
+
+            <input
+                type = "text"
+                name = "response_{{ loop.index0 }}"
+                required
+            >
+        
+        {% endfor %}
+        <button type="submit">Submit</button>
+        </form>
+    </body>
+</html>
+
+

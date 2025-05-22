@@ -3,13 +3,16 @@ from model.absences import Absences;
 from views.terminalview import TerminalView;
 from views.flaskview import FlaskView;
 
+from utils.earlyresponse import EarlyResponse;
+from functools import wraps;
+
 import random;
 
 """
 Class to handle the menu for the user to interact with the data
 """
 class Controller:
-    def __init__(self, view_type):
+    def __init__(self, view_type, view_debug = True):
         print("Loading view...");
 
         # Instantiate data and view
@@ -19,10 +22,11 @@ class Controller:
             self.__view = FlaskView();
         
         print("View loaded, loading data and menu (this will take a while)...");
-        self.__absences = Absences(); 
+        if view_debug == False:
+            self.__absences = Absences(); 
         
-        # Set default user inputs
-        self.__defaults = self.__absences.get_default_values();
+            # Set default user inputs
+            self.__defaults = self.__absences.get_default_values();
 
         # Define menu
         self.__menu = {
@@ -55,17 +59,40 @@ class Controller:
     def display_error(self, error):
         return self.__view.display_error(error);
 
+    """ 
+    Wrap around controller methods, to catch an early response from the view, i.e.. an error or a template needs to be rendered
+    """
+
+    def catch_early_response(fn):
+        # Define a wrapper to wrap around controller methods
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            # Try to run controller method
+            try:
+                return fn(*args, **kwargs);
+    
+            # EarlyResponse is produced by a Flask view, contains template to be rendered
+            except EarlyResponse as e:
+                return e.response;
+            
+            # Catch any expected errors produced by controller or view
+            except ValueError as e:
+                self.__view.display_error(e);
+    
+        return wrapper;
+    
     """
     For flask only, set app created by entrypoint
     Flask framework requires app created by entrypoint to be visible to view that produces the web pages using the app
     """
     def set_flask_app(self, app):
         self.__view.set_app(app);
-
+    
+        
     # PART 1C
     # Allow the user to search the dataset by the local authority, showing the number of pupil enrolments in each local authority by time period (year).
     # – Given a list of local authorities, display in a well-formatted fashion the number of pupil enrolments in each local authority by time period (year).
-    
+    @catch_early_response 
     def get_enrolment_by_la_over_time(self,
         use_default = False,
     ):
@@ -73,11 +100,11 @@ class Controller:
             local_authorities = self.__defaults["la_name"];
         else:
             # Ask user for local authorities 
-            local_authorities = self.__view.prompt_user(
-                prompt = "Enter the local authorities you want to analyse", 
-                type = "list",
-                final_prompt = True,
+            responses = self.__view.prompt_user(
+                prompts = ["Enter the local authorities you want to analyse"], 
+                types = ["list"],
             );
+            local_authorities = responses[0];
         
         frame = self.__absences.get_enrolment_by_la_over_time(
             local_authorities = local_authorities
@@ -106,7 +133,6 @@ class Controller:
             year = self.__view.prompt_user(
                 prompt = "Enter the year you want to analyse",
                 type = "year",
-                final_prompt = True,
             );
 
         # Get and display required table
