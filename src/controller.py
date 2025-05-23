@@ -261,8 +261,12 @@ class Controller:
             data = data
         );
         
-        return self.__view.display_single_graph(frame, datas,
-            title = "Overall absence rate over time, by region",
+        figure = create_single_graph(datas);
+
+        return self.__view.display_figures(
+            frames = [frame],
+            figures = [figure],
+            titles = ["Region attendance over time"],
         );
     
     # PART 3
@@ -272,9 +276,7 @@ class Controller:
     def eda_school_type_location_absences(self):
         # Get data and display absences by school type
         school_type_absences_frame, school_type_absences_datas = self.__absences.get_school_type_absences();
-        self.__view.display_frame(school_type_absences_frame);
-        self.__view.display_single_graph(school_type_absences_datas,
-            title = "Rates of overall absence, by school type",
+        figure_a = create_single_graph(school_type_absences_datas,
             type = "bar",
             # Force confidence intervals to appear
             num_cols_for_cis = 0,
@@ -282,18 +284,19 @@ class Controller:
         
         # Get data and display absences by region
         absences_region_frame, absences_region_datas = self.__absences.get_absences_region();
-        self.__view.display_frame(absences_region_frame);
-        self.__view.display_single_graph(absences_region_datas,
-            title = "Rates of overall absence, by region",
+        figure_b = create_single_graph(absences_region_datas,
             type = "bar",
             num_cols_for_cis = 0,
         );
-    
+
         # Get data and display school types by region
         region_school_type_frame, region_school_type_datas = self.__absences.get_region_school_type();
-        self.__view.display_frame(region_school_type_frame);
-        self.__view.display_graphs(region_school_type_datas,
-            title = "Proportion of school types, by region",
+        figure_c = create_multiple_graphs(region_school_type_datas);
+
+        return self.__view.display_figures(
+            frames = [school_type_absences_frame, absences_region_frame, region_school_type_frame],
+            figures = [figure_a, figure_b, figure_c],
+            titles = ["Rates of overall absence, by school type", "Rates of overall absence, by region", "Proportion of school types, by region"],
         );
     
     @catch_early_response

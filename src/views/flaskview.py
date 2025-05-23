@@ -26,6 +26,8 @@ class FlaskView:
 
         # Define server states
         self.__prompts = [];
+        self.__last_prompts_types = [];
+        self.__app = None;
 
     """
     Set the Flask app instance, set by entrypoint and passed to the view via controller
@@ -174,12 +176,18 @@ class FlaskView:
         # Show each figure in a separate div
         figures_html = "";
         for fig, title in zip(figures, titles):
+            # Define smaller figure size for HTML
             fig.set_figwidth(10);
             fig.set_figheight(7.5);
-
+            
+            # Create a buffer to save the figure
             buffer = BytesIO();
             fig.savefig(buffer, format='png');
+
+            # Extract the image data from the buffer as base64
             data = base64.b64encode(buffer.getvalue()).decode('utf-8');
+
+            # Provide base64 as image data to client
             figures_html += f"<h3>{title}</h3><img src='data:image/png;base64,{data}'/>";
 
         return render_template(

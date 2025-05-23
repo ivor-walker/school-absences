@@ -526,6 +526,8 @@ class Absences(SparkData):
     ):
         if not school_types:
             school_types = self.__all_distinct_school_types;
+            # Remove total from school types
+            school_types.remove("Total");
 
         filter_cols, filter_passes = self.__add_default_filters(
             filter_cols = filter_cols, 
