@@ -10,7 +10,13 @@
             <h3>{{ prompt }}</h3> 
             {# Type specific instructions for input form #}
             {% if type == "list" %}
-                <p>Enter a list of items (comma-separated):</p>
+                <p>Enter a comma-seperated list of items, e.g. Slough, Oxfordshire</p>
+            {% elif type == "int" %}
+                <p>Enter an integer, e.g. 5</p>
+            {% elif type == "year" %}
+                <p>Enter a year in yyyy/yy, e.g. 2007/08</p>
+            {% elif type == "str" %}
+                <p>Enter a string, e.g. Slough</p>
             {% endif %}
 
             <input
