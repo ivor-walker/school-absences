@@ -303,24 +303,31 @@ class Controller:
     def model_school_type_location_absences(self,
         display_results = False,
         display_detailed_results = False,
+        decimal_places = 4,
     ):
         # Get data and fit model
         frame = self.__absences.get_model_data();
         model = self.__absences.model_absences(frame = frame);
         
         # Display model summary
+        model_summary = "";
         if display_results or display_detailed_results:
-            self.__view.display_line(model.summary);
+            model_summary += str(model.summary);
         
         # Display full feature names, coefficient estimates and confidence intervals
         if display_detailed_results:
+            model_summary += "\n\nDetailed results:\n";
             # Extract coefficients and confidence intervals, and put on correct scale
             coefficients = self.__absences.scale_coefficients(model.coefficients);
             lower, upper = self.__absences.get_model_confidence_intervals(model, coefficients);
             
             # Extract feature names
             feature_names = self.__absences.get_feature_names(frame);
+            
+            for i in range(len(feature_names)):
+                # Add to model summary
+                model_summary += f"\nfeature name: {feature_names[i]}, coefficient: {round(coefficients[i], decimal_places)}, lower: {round(lower[i], decimal_places)}, upper: {round(upper[i], decimal_places)}";
 
-            [self.__view.display_line(
-                f"feature name: {feature_names[i]}, coefficient: {coefficients[i]}, lower: {lower[i]}, upper: {upper[i]}"
-            ) for i in range(len(feature_names))];
+        # Display model summary
+        if model_summary != "":
+            return self.__view.display_line(model_summary);

@@ -9,7 +9,11 @@ Entrypoint for running as Flask server, handles initialisation and routing
 view_type = "flask";
 controller = Controller(view_type);
 
-app = Flask(__name__, template_folder = "views/templates");
+app = Flask(__name__, 
+    template_folder = "views/templates",
+    static_folder = "views/static",
+);
+
 app.secret_key = "...";
 controller.set_flask_app(app);
 

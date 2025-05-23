@@ -1,0 +1,4 @@
+.text_reply {
+    /* Preserve white space */
+    white-space: pre-wrap;
+}
