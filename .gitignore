@@ -2,5 +2,8 @@ src/data/
 src/data-guidance/
 recordings/
 submission.zip
-report/
+
+/report/
 report.pdf
+
+__pycache__/
