@@ -5,56 +5,59 @@
     </head>
 
     <body>
-        <form method="GET">
-        {% for prompt, type in prompts_types %}
-            <h3>{{ prompt }}</h3> 
-            {# Type specific instructions for input form #}
-            {% if type == "list" %}
-                <p>Enter a comma-seperated list of items, e.g. Slough, Oxfordshire</p>
-            {% elif type == "int" %}
-                <p>Enter an integer, e.g. 5</p>
-            {% elif type == "year" %}
-                <p>Enter a year in yyyy/yy, e.g. 2007/08</p>
-            {% elif type == "str" %}
-                <p>Enter a string, e.g. Slough</p>
-            {% endif %}
-
-            <input
-                type = "text"
-                name = "response_{{ loop.index0 }}"
-                {# Add a placeholder for the input field #}
-                {% if loop.index0 < len_responses %}
-                    value = "{{ responses[loop.index0] }}"
+        {% if prompts_types %}
+            <form method="POST">
+            {% for prompt, type in prompts_types %}
+                <h3>{{ prompt }}</h3> 
+                {# Type specific instructions for input form #}
+                {% if type == "list" %}
+                    <p>Enter a comma-seperated list of items, e.g. Slough, Oxfordshire</p>
+                {% elif type == "int" %}
+                    <p>Enter an integer, e.g. 5</p>
+                {% elif type == "year" %}
+                    <p>Enter a year in yyyy/yy, e.g. 2007/08</p>
+                {% elif type == "str" %}
+                    <p>Enter a string, e.g. Slough</p>
                 {% endif %}
-                required
-            >
+
+                <input
+                    type = "text"
+                    name = "response_{{ loop.index0 }}"
+                    {# Add a placeholder for the input field #}
+                    {% if loop.index0 < len_responses %}
+                        value = "{{ responses[loop.index0] }}"
+                    {% endif %}
+                    required
+                >
+            
+            {% endfor %}
+            <button type="submit">Submit</button>
+            </form>
+        {% endif %}
+
+        {# Display error message from server #}
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
         
-        {% endfor %}
-        <button type="submit">Submit</button>
-        </form>
-    {# Display error message from server #}
-    {% if error %}
-        <p class="error">{{ error }}</p>
-    {% endif %}
-    
-    {# Display text reply from server #}
-    {% if text %}
-        <p class="text_reply">{{ text }}</p>
-    {% endif %}
+        {# Display text reply from server #}
+        {% if text %}
+            <p class="text_reply">{{ text }}</p>
+        {% endif %}
 
-    {# Display any HTML table reply from server, e.g. a requested Spark frame #}
-    {% if html_table %}
-        <div class="table_reply">
-            {{ html_table|safe }}
-        </div>
-    {% endif %}
+        {# Display any HTML table reply from server, e.g. a requested Spark frame #}
+        {% if html_table %}
+            <div class="table_reply">
+                {{ html_table|safe }}
+            </div>
+        {% endif %}
 
-    {# Display any figures from server #}
-    {% if figures %}
-        <div class="figures">
-            {{ figures|safe }}
-        </div>
-    {% endif %}
+        {# Display any figures from server #}
+        {% if figures %}
+            <div class="figures">
+                {{ figures|safe }}
+            </div>
+        {% endif %}
     </body>
 </html>
 

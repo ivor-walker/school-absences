@@ -46,10 +46,8 @@ class FlaskView:
         prompts = None,
         types = None,
     ):
-        datas = request.args;
-        
         # Render additional form and return it to user       
-        if not datas:
+        if request.method == "GET": 
             self.__last_prompts_types = list(zip(prompts, types));
             html = render_template(
                 'form.html', 
@@ -59,8 +57,8 @@ class FlaskView:
             raise EarlyResponse(html);
         
         # Else, extract data and return it to controller
-        else:
-            return self.__extract_responses(datas, join_members = False, type_match = True);
+        datas = request.form;
+        return self.__extract_responses(datas, join_members = False, type_match = True);
     
     """
     Helper method to extract data from form response

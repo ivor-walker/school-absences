@@ -18,39 +18,39 @@ controller.set_flask_app(app);
 def menu():
     return controller.display_menu();
 
-@app.route("/la_enrolment", methods = ["GET"])
+@app.route("/la_enrolment", methods = ["GET", "POST"])
 def la_enrolment():
     return controller.get_enrolment_by_la_over_time();
 
-@app.route("/auth_school_type", methods = ["GET"])
+@app.route("/auth_school_type", methods = ["GET", "POST"])
 def auth_scool_type():
     return controller.get_auth_by_school_type();
 
-@app.route("/auth_school_type_detailed", methods = ["GET"])
+@app.route("/auth_school_type_detailed", methods = ["GET", "POST"])
 def auth_scool_type_detailed():
     return controller.get_auth_by_school_type_detailed();
 
-@app.route("/unauth_la_region", methods = ["GET"])
+@app.route("/unauth_la_region", methods = ["GET", "POST"])
 def get_unauth_by_la_region():
     return controller.get_unauth_by_la_region();
 
-@app.route("/la_year", methods = ["GET"])
+@app.route("/la_year", methods = ["GET", "POST"])
 def compare_la_in_year():
     return controller.compare_la_in_year();
 
-@app.route("/region_attendance_time", methods = ["GET"])
+@app.route("/region_attendance_time", methods = ["GET", "POST"])
 def compare_region_attendance_over_time():
     return controller.compare_region_attendance_over_time();
 
-@app.route("/eda_school_type_location_absences", methods = ["GET"])
+@app.route("/eda_school_type_location_absences", methods = ["GET", "POST"])
 def eda_school_type_location_absences():
     return controller.eda_school_type_location_absences();
 
-@app.route("/model_school_type_location_absences", methods = ["GET"])
+@app.route("/model_school_type_location_absences", methods = ["GET", "POST"])
 def model_school_type_location_absences():
     return controller.model_school_type_location_absences(display_results = True);
 
-@app.route("/model_school_type_location_absences_detailed", methods = ["GET"])
+@app.route("/model_school_type_location_absences_detailed", methods = ["GET", "POST"])
 def model_school_type_location_absences_detailed():
     return controller.model_school_type_location_absences(display_detailed_results = True);
 
