@@ -20,9 +20,6 @@ class BaseView():
     def display_error(self, error):
         raise NotImplementedError;
         
-    def display_single_graph(self, data):
-        raise NotImplementedError;
-
     def display_graphs(self, dataset):
         raise NotImplementedError;
     

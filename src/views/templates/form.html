@@ -42,6 +42,13 @@
             {{ html_table|safe }}
         </div>
     {% endif %}
+
+    {# Display any figures from server #}
+    {% if figures %}
+        <div class="figures">
+            {{ figures|safe }}
+        </div>
+    {% endif %}
     </body>
 </html>
 

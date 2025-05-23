@@ -6,6 +6,9 @@ from flask import Flask, render_template, request;
 from utils.earlyresponse import EarlyResponse;
 from utils.typevalidation import convert_type;
 
+import base64;
+from io import BytesIO;
+
 class FlaskView:
     def __init__(self):
         # Define menu to routing map
@@ -118,11 +121,7 @@ class FlaskView:
         responses = self.__extract_responses(request.args);
         
         # Convert to Pandas dataframe and display as HTML table
-        html_table = frame.toPandas().to_html(
-            classes = "data", 
-            header = "true", 
-            index = False
-        );
+        html_table = self.__frame_to_html(frame); 
 
         return render_template(
             "form.html",
@@ -130,4 +129,66 @@ class FlaskView:
             responses = responses,
             len_responses = len(responses),
             html_table = html_table
+        );
+
+    """
+    Display multiple frames
+    """
+    def display_multiple_frames(self, frames, titles):
+        responses = self.__extract_responses(request.args);
+        
+        
+        return render_template(
+            "form.html",
+            prompts_types = self.__last_prompts_types,
+            responses = responses,
+            len_responses = len(responses),
+            html_table = html_tables
+        );
+
+    
+    """
+    Helper method to convert a Spark dataframe to HTML via Pandas
+    """
+    def __frame_to_html(self, frame, title = None):
+        title_template = f"<h3>{title}</h3>"
+
+        return title_template + frame.toPandas().to_html(
+            classes = "data", 
+            header = "true", 
+            index = False
+        );
+    
+    """
+    Render graphs to form
+    """
+    def display_figures(self,
+        frames = None,
+        figures = None,
+        titles = None,
+    ):
+        responses = self.__extract_responses(request.args); 
+
+        # Convert to Pandas dataframe and display as HTML table
+        html_tables = [self.__frame_to_html(frame, title = title) for frame, title in zip(frames, titles)]; 
+        html_tables = "".join(html_tables);
+        
+        # Show each figure in a separate div
+        figures_html = "";
+        for fig, title in zip(figures, titles):
+            fig.set_figwidth(10);
+            fig.set_figheight(7.5);
+
+            buffer = BytesIO();
+            fig.savefig(buffer, format='png');
+            data = base64.b64encode(buffer.getvalue()).decode('utf-8');
+            figures_html += f"<h3>{title}</h3><img src='data:image/png;base64,{data}'/>";
+
+        return render_template(
+            "form.html",
+            prompts_types = self.__last_prompts_types,
+            responses = responses,
+            len_responses = len(responses),
+            html_table = html_tables,
+            figures = figures_html 
         );
