@@ -19,9 +19,9 @@ class FlaskView:
             "4": "/unauth_la_region",
             "5": "/la_year",
             "6": "/region_attendance_time",            
-            "7": "eda_school_type_location_absences",
-            "8": "model_school_type_location_absences",
-            "9": "model_school_type_location_absences_detailed",
+            "7": "/eda_school_type_location_absences",
+            "8": "/model_school_type_location_absences",
+            "9": "/model_school_type_location_absences_detailed",
         };
 
         # Define server states
@@ -34,6 +34,12 @@ class FlaskView:
     """
     def set_app(self, app):
         self.__app = app;
+
+        # Add base routes from app to routing menu
+        self.__app_route = self.__app.config["APPLICATION_ROOT"];
+
+        for route in self.__routes:
+            self.__routes[route] = self.__app_route + self.routes[route];
 
     """
     Display menu template

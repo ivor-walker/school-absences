@@ -13,8 +13,11 @@ app = Flask(__name__,
     template_folder = "views/templates",
     static_folder = "views/static",
 );
-
 app.secret_key = "...";
+
+# Set root path for Flask app
+app.config['APPLICATION_ROOT'] = "/school_absences";
+
 controller.set_flask_app(app);
 
 # Routing to all functions in controller
