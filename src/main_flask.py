@@ -13,10 +13,11 @@ app = Flask(__name__,
     template_folder = "views/templates",
     static_folder = "views/static",
 );
-app.secret_key = "...";
 
 # Set root path for Flask app
-app.config['APPLICATION_ROOT'] = "/school_absences";
+app.config['APPLICATION_ROOT'] = "/school-absences";
+
+app.secret_key = "...";
 
 controller.set_flask_app(app);
 
@@ -63,4 +64,4 @@ def model_school_type_location_absences_detailed():
 
 # Run the Flask app
 if __name__ == "__main__":
-    app.run(debug = True);
+    app.run(debug = False);

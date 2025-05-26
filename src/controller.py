@@ -267,6 +267,7 @@ class Controller:
             frames = [frame],
             figures = [figure],
             titles = ["Region attendance over time"],
+            no_form = True,
         );
     
     # PART 3
@@ -297,6 +298,7 @@ class Controller:
             frames = [school_type_absences_frame, absences_region_frame, region_school_type_frame],
             figures = [figure_a, figure_b, figure_c],
             titles = ["Rates of overall absence, by school type", "Rates of overall absence, by region", "Proportion of school types, by region"],
+            no_form = True,
         );
     
     @catch_early_response
@@ -330,4 +332,9 @@ class Controller:
 
         # Display model summary
         if model_summary != "":
-            return self.__view.display_line(model_summary);
+            model_summary_warning = """
+            Warning: This model is overdispersed, so standard errors and p-values are artificially low and all variables falsely appear significant. Spark has no built-in way to handle overdispersion, so please focus on interpreting coefficient sizes and ignore confidence intervals for now. In the future I will conduct a power analysis to determine the sample size needed, then collect a sample of that size and use a more complete GLM library (or even import into R) that supports quasi-Poisson/negative binomial approaches to addressing overdispersion.
+            """
+            model_summary = model_summary_warning + "\n\n" + model_summary;
+
+            return self.__view.display_line(model_summary, no_form = True);

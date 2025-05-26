@@ -23,7 +23,7 @@
 
                 <input
                     type = "text"
-                    name = "response_{{ loop.index0 }}"
+                    name = "{{ type }}_{{ loop.index0 }}"
                     {# Add a placeholder for the input field #}
                     {% if loop.index0 < len_responses %}
                         value = "{{ responses[loop.index0] }}"

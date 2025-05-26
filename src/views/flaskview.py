@@ -39,7 +39,7 @@ class FlaskView:
         self.__app_route = self.__app.config["APPLICATION_ROOT"];
 
         for route in self.__routes:
-            self.__routes[route] = self.__app_route + self.routes[route];
+            self.__routes[route] = self.__app_route + self.__routes[route];
 
     """
     Display menu template
@@ -53,13 +53,14 @@ class FlaskView:
     def prompt_user(self,
         prompts = None,
         types = None,
+        no_form = False
     ):
         # Render additional form and return it to user       
         if request.method == "GET": 
             self.__last_prompts_types = list(zip(prompts, types));
             html = render_template(
                 'form.html', 
-                prompts_types = self.__last_prompts_types,
+                prompts_types = self.__get_last_prompts_types(no_form = no_form),
                 len_responses = 0,
             );
             raise EarlyResponse(html);
@@ -67,7 +68,18 @@ class FlaskView:
         # Else, extract data and return it to controller
         datas = request.form;
         return self.__extract_responses(datas, join_members = False, type_match = True);
-    
+
+    """
+    Getter for last prompts types
+    """
+    def __get_last_prompts_types(self, no_form = False):
+
+        # Return empty list if controller specifies this view has no form
+        if no_form:
+            return [];
+
+        return self.__last_prompts_types;
+
     """
     Helper method to extract data from form response
     """
@@ -77,7 +89,7 @@ class FlaskView:
         # Need to convert from string to target type for controller
         if type_match:
             for i in range(len(datas_keys_values)):
-                target_type = self.__last_prompts_types[i][1]; 
+                target_type = self.__get_last_prompts_types()[i][1]; 
                 target_value = datas_keys_values[i][1][0];
 
                 datas_keys_values[i] = (datas_keys_values[i][0], convert_type(target_value, target_type));
@@ -90,18 +102,16 @@ class FlaskView:
 
         return datas_values;
     
-    # TODO get both views to use below method 
-    
 
     """
     Display an error in most recent form
     """
-    def display_error(self, error):
+    def display_error(self, error, no_form = False):
         responses = self.__extract_responses(request.args);
 
         return render_template(
             'form.html', 
-            prompts_types = self.__last_prompts_types,
+            prompts_types = self.__get_last_prompts_types(no_form = no_form),
             responses = responses, 
             len_responses = len(responses),
             error = str(error)
@@ -110,11 +120,11 @@ class FlaskView:
     """
     Append a line to current form
     """
-    def display_line(self, text):
+    def display_line(self, text, no_form = False):
         responses = self.__extract_responses(request.args);
         return render_template(
             "form.html",
-            prompts_types = self.__last_prompts_types,
+            prompts_types = self.__get_last_prompts_types(no_form = no_form),
             responses = responses,
             len_responses = len(responses),
             text = text
@@ -123,7 +133,7 @@ class FlaskView:
     """
     Display a Spark dataframe fetched by controller
     """
-    def display_frame(self, frame):
+    def display_frame(self, frame, no_form = False):
         responses = self.__extract_responses(request.args);
         
         # Convert to Pandas dataframe and display as HTML table
@@ -131,7 +141,7 @@ class FlaskView:
 
         return render_template(
             "form.html",
-            prompts_types = self.__last_prompts_types,
+            prompts_types = self.__get_last_prompts_types(no_form = no_form),
             responses = responses,
             len_responses = len(responses),
             html_table = html_table
@@ -140,13 +150,13 @@ class FlaskView:
     """
     Display multiple frames
     """
-    def display_multiple_frames(self, frames, titles):
+    def display_multiple_frames(self, frames, titles, no_form = False):
         responses = self.__extract_responses(request.args);
         
         
         return render_template(
             "form.html",
-            prompts_types = self.__last_prompts_types,
+            prompts_types = self.__get_last_prompts_types(no_form = no_form),
             responses = responses,
             len_responses = len(responses),
             html_table = html_tables
@@ -157,7 +167,10 @@ class FlaskView:
     Helper method to convert a Spark dataframe to HTML via Pandas
     """
     def __frame_to_html(self, frame, title = None):
-        title_template = f"<h3>{title}</h3>"
+        if title is None:
+            title_template = ""; 
+        else:
+            title_template = f"<h3>{title}</h3>"
 
         return title_template + frame.toPandas().to_html(
             classes = "data", 
@@ -172,6 +185,7 @@ class FlaskView:
         frames = None,
         figures = None,
         titles = None,
+        no_form = False
     ):
         responses = self.__extract_responses(request.args); 
 
@@ -198,7 +212,7 @@ class FlaskView:
 
         return render_template(
             "form.html",
-            prompts_types = self.__last_prompts_types,
+            prompts_types = self.__get_last_prompts_types(no_form = no_form),
             responses = responses,
             len_responses = len(responses),
             html_table = html_tables,
