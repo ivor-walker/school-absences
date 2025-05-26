@@ -89,9 +89,12 @@ class FlaskView:
         # Need to convert from string to target type for controller
         if type_match:
             for i in range(len(datas_keys_values)):
+
+                # Check stored target_type exists and is a tuple
+                if i < len(self.__last_prompts_types):
+                    continue;
                 target_type = self.__get_last_prompts_types()[i];
 
-                # Check stored target_type exists
                 if type(target_type) is not tuple:
                     continue;
                 target_type = target_type[1];
