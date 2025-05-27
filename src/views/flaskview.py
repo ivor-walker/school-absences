@@ -2,14 +2,16 @@
 View using Flask
 """
 
+from src.views.baseview import BaseView;
+
 from flask import Flask, render_template, request;
-from utils.earlyresponse import EarlyResponse;
-from utils.typevalidation import convert_type;
+from src.utils.earlyresponse import EarlyResponse;
+from src.utils.typevalidation import convert_type;
 
 import base64;
 from io import BytesIO;
 
-class FlaskView:
+class FlaskView(BaseView):
     def __init__(self):
         # Define menu to routing map
         self.__routes = {

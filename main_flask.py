@@ -1,23 +1,24 @@
 from flask import Flask, render_template;
 
-from controller import Controller;
+import os;
+
+from src.controller import Controller;
 
 """
 Entrypoint for running as Flask server, handles initialisation and routing 
 """
 # Initialise controller & flask app
 view_type = "flask";
-controller = Controller(view_type);
+controller = Controller(view_type, 
+    csv_loc = os.environ["DATA_LOC"]
+);
 
 app = Flask(__name__, 
     template_folder = "views/templates",
     static_folder = "views/static",
 );
 
-# Set root path for Flask app
-app.config['APPLICATION_ROOT'] = "/school-absences";
-
-app.secret_key = "...";
+app.config["APPLICATION_ROOT"] = os.environ["APPLICATION_ROOT"];
 
 controller.set_flask_app(app);
 
@@ -64,4 +65,9 @@ def model_school_type_location_absences_detailed():
 
 # Run the Flask app
 if __name__ == "__main__":
-    app.run(debug = False);
+    # Get debug mode from environment variable
+    debug_mode = os.environ.get("DEBUG", "False").lower() == "True";
+
+    app.run(
+        debug = debug_mode,
+    ),

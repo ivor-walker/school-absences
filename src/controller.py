@@ -1,12 +1,12 @@
-from model.absences import Absences;
+from src.model.absences import Absences;
 
-from views.terminalview import TerminalView;
-from views.flaskview import FlaskView;
+from src.views.terminalview import TerminalView;
+from src.views.flaskview import FlaskView;
 
-from utils.earlyresponse import EarlyResponse;
+from src.utils.earlyresponse import EarlyResponse;
 from functools import wraps;
 
-from utils.graphs import create_multiple_graphs, create_single_graph;
+from src.utils.graphs import create_multiple_graphs, create_single_graph;
 
 import random;
 
@@ -14,7 +14,7 @@ import random;
 Class to handle the menu for the user to interact with the data
 """
 class Controller:
-    def __init__(self, view_type, view_debug = False):
+    def __init__(self, view_type, view_debug = False, csv_loc = None):
         print("Loading view...");
 
         # Instantiate data and view
@@ -25,7 +25,7 @@ class Controller:
         
         print("View loaded, loading data and menu (this will take a while)...");
         if view_debug == False:
-            self.__absences = Absences(); 
+            self.__absences = Absences(absences_loc = csv_loc); 
         
             # Set default user inputs
             self.__defaults = self.__absences.get_default_values();

@@ -1,4 +1,4 @@
-from model.spark_data import SparkData;
+from src.model.spark_data import SparkData;
 
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorSlicer, Interaction;
 from pyspark.ml import Pipeline;
@@ -23,7 +23,7 @@ class Absences(SparkData):
     @param absences_loc: str, the location of the absences data
     """
     def __init__(self,
-        absences_loc = "data/Absence_3term201819_nat_reg_la_sch.csv",
+        absences_loc = None,
         total_school_type = "Total",
     ):
         # Load the data

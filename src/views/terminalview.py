@@ -1,11 +1,11 @@
-from views.baseview import BaseView;
+from src.views.baseview import BaseView;
 
 import warnings;
 
 import math;
 import numpy as np;
 
-from utils.typevalidation import convert_type;
+from src.utils.typevalidation import convert_type;
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg;
 import tkinter as tk;
