@@ -13,7 +13,7 @@ os.chdir(project_path);
 os.environ.setdefault("APPLICATION_ROOT", "/school-absences");
 
 # Set data location
-os.environ.setdefault("DATA_LOC", "/src/data/Absence_3term201819_nat_reg_la_sch.csv");
+os.environ.setdefault("DATA_LOC", "src/data/Absence_3term201819_nat_reg_la_sch.csv");
 
 # Set debug mode
 os.environ.setdefault("DEBUG", "False");
