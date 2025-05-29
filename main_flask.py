@@ -3,7 +3,6 @@ Entrypoint for Flask server
 Exposes an application callable for WSGI servers
 For different WSGI servers:
 waitress: waitress-serve --listen=0.0.0.0:5000 main_flask:application
-apache:
 """
 # Load environment variables from .env file
 from dotenv import load_dotenv;
