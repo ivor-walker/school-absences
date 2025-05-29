@@ -83,7 +83,7 @@ class FlaskView(BaseView):
         datas_values = [key_value[1] for key_value in datas_keys_values];
         if join_members:
             datas_values = ["".join(value) for value in datas_values];
-
+        
         return datas_values;
         
     """
@@ -93,9 +93,10 @@ class FlaskView(BaseView):
         for i, key_value in enumerate(datas_keys_values):
             key, value = key_value;
 
-            target_type = key.split("_")[-1];
+            target_type = key.split("_")[0];
+            target_value = value[0];
 
-            datas_keys_values[i] = (key, convert_type(value, target_type));
+            datas_keys_values[i] = (key, convert_type(target_value, target_type));
 
         return datas_keys_values;
 
