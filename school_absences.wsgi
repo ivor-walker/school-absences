@@ -1,7 +1,4 @@
 # WSGI file for running the Flask application with Apache
-# Load environment variables from .env file
-from dotenv import load_dotenv;
-load_dotenv();
 
 import sys, os;
 
@@ -13,6 +10,10 @@ project_path = os.path.dirname(os.path.abspath(__file__));
 if project_path not in sys.path:
     sys.path.insert(0, project_path);
     os.chdir(project_path);
+
+# Load environment variables from .env file
+from dotenv import load_dotenv;
+load_dotenv();
 
 # Import Flask app
 from src.views.flaskapp import app as application;
