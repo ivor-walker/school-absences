@@ -1,4 +1,5 @@
 # WSGI file for running the Flask application with a WSGI server and Apache
+import os;
 
 # CD into the src directory
 # Find path of this school-absences.wsgi
