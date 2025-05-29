@@ -15,7 +15,7 @@ Class to handle the menu for the user to interact with the data
 """
 class Controller:
     def __init__(self, view_type, view_debug = False, csv_loc = None):
-        print("Loading view...");
+        print("Loading view and menu...");
 
         # Instantiate data and view
         if view_type == "terminal":
@@ -23,13 +23,6 @@ class Controller:
         elif view_type == "flask":
             self.__view = FlaskView();
         
-        print("View loaded, loading data and menu (this will take a while)...");
-        if view_debug == False:
-            self.__absences = Absences(absences_loc = csv_loc); 
-        
-            # Set default user inputs
-            self.__defaults = self.__absences.get_default_values();
-
         # Define menu
         self.__menu = {
             "1": "Task 1C: Get enrolment, by local authority, over time",
@@ -47,6 +40,16 @@ class Controller:
         if view_type == "terminal":
             self.__menu["0"] = "Exit";
 
+        print("Loaded view and menu.");
+
+        if view_debug == False:
+            print("Loading data (this will take a while)...");
+            self.__absences = Absences(absences_loc = csv_loc); 
+        
+            # Set default user inputs
+            self.__defaults = self.__absences.get_default_values();
+
+        
         print("Loading complete!");
 
     """

@@ -7,3 +7,5 @@ submission.zip
 report.pdf
 
 __pycache__/
+
+.env

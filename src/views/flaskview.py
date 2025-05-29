@@ -85,26 +85,12 @@ class FlaskView(BaseView):
     """
     Helper method to extract data from form response
     """
-    def __extract_responses(self, datas, join_members = True, type_match = False, list_split_char = ","):
+    def __extract_responses(self, datas, join_members = True, type_match = True, list_split_char = ","):
         datas_keys_values = [(key, value) for key, value in datas.to_dict(flat = False).items() if key != 'submit']; 
 
         # Need to convert from string to target type for controller
         if type_match:
-            for i in range(len(datas_keys_values)):
-
-                # Check stored target_type exists and is a tuple
-                if i < len(self.__last_prompts_types):
-                    continue;
-                target_type = self.__get_last_prompts_types()[i];
-
-                if type(target_type) is not tuple:
-                    continue;
-                target_type = target_type[1];
-
-                target_value = datas_keys_values[i][1][0];
-
-                datas_keys_values[i] = (datas_keys_values[i][0], convert_type(target_value, target_type));
-
+            self.__convert_types(datas_keys_values, list_split_char = list_split_char); 
         # Each response is a 1-element list, need to join them before sending to client
 
         datas_values = [key_value[1] for key_value in datas_keys_values];
@@ -112,6 +98,28 @@ class FlaskView(BaseView):
             datas_values = ["".join(value) for value in datas_values];
 
         return datas_values;
+        
+        """
+        Convert types of responses to match controller expectations
+        """
+    def __convert_types(self, datas_keys_values, list_split_char = ","):
+        for i in range(len(datas_keys_values)):
+
+            # Check stored target_type exists and is a tuple
+            if i < len(self.__last_prompts_types):
+                continue;
+            target_type = self.__get_last_prompts_types()[i];
+
+            if type(target_type) is not tuple:
+                continue;
+            target_type = target_type[1];
+
+            target_value = datas_keys_values[i][1][0];
+
+            datas_keys_values[i] = (datas_keys_values[i][0], convert_type(target_value, target_type));
+
+        return datas_keys_values;
+
     
 
     """

@@ -1,0 +1,18 @@
+# Flask app base route 
+APPLICATION_ROOT = ""
+
+# Flask debug mode
+DEBUG = ""
+
+# Flask main location  
+FLASK_APP = ""
+
+# Secret for Flask cookies
+FLASK_SECRET = ""
+
+# Location of data
+DATA_LOC = ""
+
+
+
+
