@@ -25,7 +25,7 @@
                     type = "text"
                     name = "{{ type }}_{{ loop.index0 }}"
                     {# Add a placeholder for the input field #}
-                    {% if loop.index0 < len_responses %}
+                    {% if len_responses and loop.index0 < len_responses %}
                         value = "{{ responses[loop.index0] }}"
                     {% endif %}
                     required

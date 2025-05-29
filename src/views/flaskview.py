@@ -27,10 +27,9 @@ class FlaskView(BaseView):
         };
 
         # Define server states
-        self.__prompts = [];
-        self.__last_prompts_types = [];
         self.__app = None;
-
+        self.__user_navigation_map = {};
+        
     """
     Set the Flask app instance, set by entrypoint and passed to the view via controller
     """
@@ -55,84 +54,58 @@ class FlaskView(BaseView):
     def prompt_user(self,
         prompts = None,
         types = None,
-        no_form = False
     ):
-        # Render additional form and return it to user       
-        if request.method == "GET": 
-            self.__last_prompts_types = list(zip(prompts, types));
+        # If user needs to input data, send user form 
+        datas = request.form;
+        if len(datas) == 0:
+            prompts_types = list(zip(prompts, types));
+
             html = render_template(
                 'form.html', 
-                prompts_types = self.__get_last_prompts_types(no_form = no_form),
-                len_responses = 0,
+                prompts_types = prompts_types,
             );
             raise EarlyResponse(html);
         
         # Else, extract data and return it to controller
-        datas = request.form;
-        return self.__extract_responses(datas, join_members = False, type_match = True);
-
-    """
-    Getter for last prompts types
-    """
-    def __get_last_prompts_types(self, no_form = False):
-
-        # Return empty list if controller specifies this view has no form
-        if no_form:
-            return [];
-
-        return self.__last_prompts_types;
+        return self.__extract_responses(datas, join_members = False);
 
     """
     Helper method to extract data from form response
     """
-    def __extract_responses(self, datas, join_members = True, type_match = True, list_split_char = ","):
+    def __extract_responses(self, datas, join_members = True, list_split_char = ","):
+        # Get web resposes as key-value tuples, excluding the submit button
         datas_keys_values = [(key, value) for key, value in datas.to_dict(flat = False).items() if key != 'submit']; 
 
         # Need to convert from string to target type for controller
-        if type_match:
-            self.__convert_types(datas_keys_values, list_split_char = list_split_char); 
-        # Each response is a 1-element list, need to join them before sending to client
+        self.__convert_types(datas_keys_values, list_split_char = list_split_char); 
 
+        # Each response is a 1-element list, need to join them before sending to client
         datas_values = [key_value[1] for key_value in datas_keys_values];
         if join_members:
             datas_values = ["".join(value) for value in datas_values];
 
         return datas_values;
         
-        """
-        Convert types of responses to match controller expectations
-        """
+    """
+    Convert types of responses to match controller expectations
+    """
     def __convert_types(self, datas_keys_values, list_split_char = ","):
-        for i in range(len(datas_keys_values)):
+        for i, key_value in enumerate(datas_keys_values):
+            key, value = key_value;
 
-            # Check stored target_type exists and is a tuple
-            if i < len(self.__last_prompts_types):
-                continue;
-            target_type = self.__get_last_prompts_types()[i];
+            target_type = key.split("_")[-1];
 
-            if type(target_type) is not tuple:
-                continue;
-            target_type = target_type[1];
-
-            target_value = datas_keys_values[i][1][0];
-
-            datas_keys_values[i] = (datas_keys_values[i][0], convert_type(target_value, target_type));
+            datas_keys_values[i] = (key, convert_type(value, target_type));
 
         return datas_keys_values;
 
-    
 
     """
     Display an error in most recent form
     """
-    def display_error(self, error, no_form = False):
-        responses = self.__extract_responses(request.args);
-
+    def display_error(self, error):
         return render_template(
             'form.html', 
-            prompts_types = self.__get_last_prompts_types(no_form = no_form),
-            responses = responses, 
-            len_responses = len(responses),
             error = str(error)
         );
 
@@ -140,12 +113,8 @@ class FlaskView(BaseView):
     Append a line to current form
     """
     def display_line(self, text, no_form = False):
-        responses = self.__extract_responses(request.args);
         return render_template(
             "form.html",
-            prompts_types = self.__get_last_prompts_types(no_form = no_form),
-            responses = responses,
-            len_responses = len(responses),
             text = text
         );
 
@@ -153,16 +122,11 @@ class FlaskView(BaseView):
     Display a Spark dataframe fetched by controller
     """
     def display_frame(self, frame, no_form = False):
-        responses = self.__extract_responses(request.args);
-        
         # Convert to Pandas dataframe and display as HTML table
         html_table = self.__frame_to_html(frame); 
 
         return render_template(
             "form.html",
-            prompts_types = self.__get_last_prompts_types(no_form = no_form),
-            responses = responses,
-            len_responses = len(responses),
             html_table = html_table
         );
 
@@ -170,14 +134,10 @@ class FlaskView(BaseView):
     Display multiple frames
     """
     def display_multiple_frames(self, frames, titles, no_form = False):
-        responses = self.__extract_responses(request.args);
-        
-        
+        html_tables = self.__frames_to_html(frames, titles); 
+
         return render_template(
             "form.html",
-            prompts_types = self.__get_last_prompts_types(no_form = no_form),
-            responses = responses,
-            len_responses = len(responses),
             html_table = html_tables
         );
 
@@ -196,6 +156,16 @@ class FlaskView(BaseView):
             header = "true", 
             index = False
         );
+
+    """
+    Helper method to convert multiple Spark dataframes to HTML via Pandas
+    """
+    def __frames_to_html(self, frames, titles):
+        html_tables = [self.__frame_to_html(frame, title = title) for frame, title in zip(frames, titles)];
+        html_tables = "".join(html_tables);
+
+        return html_tables;
+
     
     """
     Render graphs to form
@@ -209,9 +179,8 @@ class FlaskView(BaseView):
         responses = self.__extract_responses(request.args); 
 
         # Convert to Pandas dataframe and display as HTML table
-        html_tables = [self.__frame_to_html(frame, title = title) for frame, title in zip(frames, titles)]; 
-        html_tables = "".join(html_tables);
-        
+        html_tables = self.__frames_to_html(frames, titles);
+
         # Show each figure in a separate div
         figures_html = "";
         for fig, title in zip(figures, titles):
@@ -231,9 +200,6 @@ class FlaskView(BaseView):
 
         return render_template(
             "form.html",
-            prompts_types = self.__get_last_prompts_types(no_form = no_form),
-            responses = responses,
-            len_responses = len(responses),
             html_table = html_tables,
             figures = figures_html 
         );
