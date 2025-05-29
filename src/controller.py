@@ -8,6 +8,8 @@ from functools import wraps;
 
 from src.utils.graphs import create_multiple_graphs, create_single_graph;
 
+from src.model.model import Model;
+
 import random;
 
 """
@@ -40,8 +42,6 @@ class Controller:
         if view_type == "terminal":
             self.__menu["0"] = "Exit";
 
-        print("Loaded view and menu.");
-
         if view_debug == False:
             print("Loading data (this will take a while)...");
             self.__absences = Absences(absences_loc = csv_loc); 
@@ -49,6 +49,11 @@ class Controller:
             # Set default user inputs
             self.__defaults = self.__absences.get_default_values();
 
+            # Get data and fit model
+            print("Fitting model (this will take a while)...");
+            frame = self.__absences.get_model_data();
+            feature_names = self.__absences.get_feature_names(frame);
+            self.__model = Model(frame, feature_names);
         
         print("Loading complete!");
 
@@ -308,36 +313,10 @@ class Controller:
     def model_school_type_location_absences(self,
         display_results = False,
         display_detailed_results = False,
-        decimal_places = 4,
     ):
-        # Get data and fit model
-        frame = self.__absences.get_model_data();
-        model = self.__absences.model_absences(frame = frame);
-        
-        # Display model summary
-        model_summary = "";
-        if display_results or display_detailed_results:
-            model_summary += str(model.summary);
-        
-        # Display full feature names, coefficient estimates and confidence intervals
-        if display_detailed_results:
-            model_summary += "\n\nDetailed results:\n";
-            # Extract coefficients and confidence intervals, and put on correct scale
-            coefficients = self.__absences.scale_coefficients(model.coefficients);
-            lower, upper = self.__absences.get_model_confidence_intervals(model, coefficients);
-            
-            # Extract feature names
-            feature_names = self.__absences.get_feature_names(frame);
-            
-            for i in range(len(feature_names)):
-                # Add to model summary
-                model_summary += f"\nfeature name: {feature_names[i]}, coefficient: {round(coefficients[i], decimal_places)}, lower: {round(lower[i], decimal_places)}, upper: {round(upper[i], decimal_places)}";
-
-        # Display model summary
-        if model_summary != "":
-            model_summary_warning = """
-            Warning: This model is overdispersed, so standard errors and p-values are artificially low and all variables falsely appear significant. Spark has no built-in way to handle overdispersion, so please focus on interpreting coefficient sizes and ignore confidence intervals for now. In the future I will conduct a power analysis to determine the sample size needed, then collect a sample of that size and use a more complete GLM library (or even import into R) that supports quasi-Poisson/negative binomial approaches to addressing overdispersion.
-            """
-            model_summary = model_summary_warning + "\n\n" + model_summary;
-
-            return self.__view.display_line(model_summary, no_form = True);
+        if display_results:
+            return self.__view.display_line(self.__model.get_model_summary());
+        elif display_detailed_results:
+            return self.__view.display_line(self.__model.get_detailed_model_summary());
+        else:
+            raise ValueError("You must specify whether to display results or detailed results");

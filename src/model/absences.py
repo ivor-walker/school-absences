@@ -9,10 +9,6 @@ import pyspark.sql.functions as F;
 import numpy as np;
 from pyspark.ml.stat import Correlation;
 
-from pyspark.ml.regression import GeneralizedLinearRegression;
-
-import math;
-
 """
 Class representing the absences data specifically
 """
@@ -627,21 +623,7 @@ class Absences(SparkData):
 
         return frame, datas;
     
-    """
-    Return a fitted model for absences
-    """
-    def model_absences(self,
-        framework = None,
-        frame = None,
-    ):
-        if framework is None:
-            framework = self.__get_model_framework();
-
-        if frame is None:
-            frame = self.__get_model_data();
-
-        return framework.fit(frame);
-
+    
     """
     Produce the dataset required to model absences
     """
@@ -691,22 +673,7 @@ class Absences(SparkData):
 
         return model_frame;
 
-    """
-    Return a framework for modelling absences
-    """
-    def __get_model_framework(self,
-        offset = "sess_possible",
-        response = "sess_overall",
-    ):
-        # Poisson GLM with an offset
-        return GeneralizedLinearRegression(
-            family = "poisson",
-            link = "log",
-            featuresCol = "features",
-            labelCol = response,
-            offsetCol = f"log_{offset}",
-        );
-                   
+                       
     """
     Create a pipeline for transforming data in preparation for modelling absences
     """
@@ -783,34 +750,7 @@ class Absences(SparkData):
             print(f"Features '{feature_names[i]}' ({i}) and '{feature_names[j]}' ({j}) have high collinearity: {corr_matrix[i, j]}");
 
     """
-    Compute confidence intervals for the model
-
-    @param model: GeneralizedLinearRegressionModel, the model to get confidence intervals for
-    @param coefficients: list of float, the coefficients of the model
-    @param z: float, the z value for the confidence interval (default z yields 95% confidence interval)
-    """
-    def get_model_confidence_intervals(self, model, coefficients,
-        z = 1.96,
-    ):
-        # Extract coefficients and SEs
-        standard_errors = model.summary.coefficientStandardErrors;
-
-        # Transform from log scale to original scale
-        standard_errors = [standard_error * coefficient for standard_error, coefficient in zip(standard_errors, coefficients)];
-
-        # Assume normal distribution of SEs (reasonable given extreme sample size and CLT), and calculate confidence intervals
-        lower, upper = zip(*[(coefficient - z * standard_error, coefficient + z * standard_error) for coefficient, standard_error in zip(coefficients, standard_errors)]);
-
-        return lower, upper;
-
-    """
-    Scale coefficients of model to original scale
-    """
-    def scale_coefficients(self, coefficients):
-        return [math.exp(coefficient) for coefficient in coefficients];
-
-    """
-    Get feature names from the model frame
+	Calculate feature names from the model frame
     """
     def get_feature_names(self, frame,
         idx_sort = None,
@@ -825,4 +765,5 @@ class Absences(SparkData):
         # Get feature names
         feature_names = [feature["name"] for feature in features];
 
-        return feature_names; 
+        return feature_names;
+

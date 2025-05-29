@@ -1,5 +1,4 @@
 # WSGI file for running the Flask application with Apache
-
 import sys, os;
 
 # CD into the src directory
